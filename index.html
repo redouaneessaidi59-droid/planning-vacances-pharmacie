@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#174b40"><title>Planning Vacances — Pharmacie</title>
+<style>
+:root{--green:#174b40;--green2:#236c5b;--bg:#f3f6f4;--card:#fff;--ink:#18312b;--muted:#71817b;--line:#e1e9e4;--gold:#a66b12;--red:#a33333}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:linear-gradient(120deg,var(--green),var(--green2));color:white;padding:24px max(18px,calc((100vw - 1100px)/2));}
+header h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#d7e8e1}
+main{max-width:1100px;margin:22px auto;padding:0 16px 50px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin:14px 0;box-shadow:0 4px 16px #18312b0a}
+h2{font-size:19px;margin:0 0 14px}h3{font-size:16px;margin:0 0 10px}.muted,.hint{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+label{display:block;font-weight:600;font-size:14px;margin:10px 0 5px}input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd8d1;border-radius:10px;background:white;font:inherit;color:var(--ink)}
+button{border:0;border-radius:10px;background:var(--green);color:white;padding:11px 15px;font:600 14px system-ui;cursor:pointer}button.secondary{background:#e9f0ec;color:var(--green)}button.danger{background:#a33333}button:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.tabs button{background:#e5ece8;color:var(--green)}.tabs button.active{background:var(--green);color:white}
+.badge{display:inline-block;padding:4px 9px;border-radius:30px;background:#edf2ef;color:#53665d;font-size:12px}.badge.ok{background:#e0f3e9;color:#17633f}.badge.wait{background:#fff0d7;color:#82510a}.badge.no{background:#fbe5e5;color:#922e2e}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.item{border:1px solid var(--line);padding:14px;border-radius:12px;margin:10px 0}.hidden{display:none!important}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-size:12px}
+#notice{padding:12px;border-radius:10px;background:#e6f3eb;color:#17563d;margin:12px 0;display:none}#notice.error{background:#fae9e9;color:#8a2929}
+small.privacy{display:block;background:#f5f1e8;padding:10px;border-radius:9px;color:#725521;margin-top:8px}
+footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-size:12px}
+@media(max-width:600px){header{padding:20px 17px}main{margin-top:12px}.card{padding:15px}table{font-size:12px}th,td{padding:7px}}
+</style>
+</head>
+<body>
+<header><h1>📅 Planning Vacances</h1><p>Congés, remplacements et récupérations — équipe officinale</p></header>
+<main>
+<div id="notice"></div>
+<section id="config" class="card">
+<h2>Connexion à la base de données</h2>
+<p class="muted">Renseigne les deux paramètres publics de ton projet Supabase. Ils ne sont pas des mots de passe. Ne partage jamais la clé « service_role ».</p>
+<div class="grid"><div><label>URL du projet Supabase</label><input id="supabaseUrl" placeholder="https://xxxx.supabase.co"></div><div><label>Clé publique (anon / publishable)</label><input id="supabaseKey" placeholder="sb_publishable_... ou clé anon"></div></div>
+<div class="actions"><button id="saveConfig">Enregistrer et continuer</button></div>
+</section>
+<section id="auth" class="card hidden">
+<h2>Connexion</h2>
+<div class="grid"><div><label>Adresse e-mail</label><input id="email" type="email" autocomplete="username"></div><div><label>Mot de passe</label><input id="password" type="password" autocomplete="current-password"></div></div>
+<div class="actions"><button id="login">Se connecter</button><button class="secondary" id="signup">Créer mon compte</button></div>
+<p class="hint">Chaque membre doit créer son compte avec son adresse e-mail personnelle. Ibrahim et Redouane recevront ensuite les droits de gestion via le réglage administrateur décrit dans le guide.</p>
+</section>
+<section id="app" class="hidden">
+<div class="card row"><div><strong id="who"></strong><div class="muted" id="role"></div></div><button class="secondary" id="logout">Déconnexion</button></div>
+<div class="tabs">
+<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
+</div>
+<section id="overview" class="card"><h2>Demandes de l'équipe</h2><p class="muted">Les dates et le statut sont visibles par l'équipe. Les modalités de rémunération restent réservées à la direction.</p><div id="requestsList">Chargement…</div></section>
+<section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
+<div class="grid"><div><label>Premier jour d'absence</label><input type="date" id="leaveStart"></div><div><label>Dernier jour d'absence</label><input type="date" id="leaveEnd"></div></div>
+<label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button></div>
+<hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+<h3>Se proposer pour remplacer</h3><label>Demande à remplacer</label><select id="replaceLeave"></select>
+<label>Mode de compensation (visible uniquement par la direction)</label><select id="compMode"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select>
+<div id="recoveryFields"><label>Dates souhaitées de récupération</label><input type="date" id="recoveryDate"><p class="hint">La date proposée devra être approuvée par Ibrahim.</p></div>
+<small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
+<div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
+<section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
+<section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
+</section>
+</main>
+<footer>Application de gestion interne — les soldes sont initialisés à zéro. Les compteurs congés et récupération sont séparés. Vérifier les droits conventionnels et le traitement du temps de remplacement avant toute décision de paie ou de récupération.</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+let sb=null,user=null,profile=null,tab="overview";
+const $=id=>document.getElementById(id);
+function notice(msg,error=false){$('notice').textContent=msg;$('notice').style.display='block';$('notice').className=error?'error':''}
+function show(id,on){$(id).classList.toggle('hidden',!on)}
+function cfg(){return {url:localStorage.getItem('pv_url'),key:localStorage.getItem('pv_key')}}
+function init(){const c=cfg();if(c.url&&c.key){$('supabaseUrl').value=c.url;$('supabaseKey').value=c.key;connect(c.url,c.key)}}
+function connect(url,key){if(!window.supabase){notice("Impossible de charger la bibliothèque de connexion. Vérifie ta connexion internet.",true);return}
+sb=window.supabase.createClient(url,key);show('config',false);show('auth',true);sb.auth.getSession().then(({data})=>{if(data.session)loadUser()})}
+$('saveConfig').onclick=()=>{const u=$('supabaseUrl').value.trim(),k=$('supabaseKey').value.trim();if(!u.startsWith('https://')||!k){notice("URL ou clé publique manquante.",true);return}localStorage.setItem('pv_url',u);localStorage.setItem('pv_key',k);connect(u,k)};
+$('login').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(error)notice(error.message,true);else loadUser()};
+$('signup').onclick=async()=>{const {data,error}=await sb.auth.signUp({email:$('email').value,password:$('password').value});if(error)notice(error.message,true);else notice(data.session?"Compte créé.":"Compte créé : vérifie l'e-mail de confirmation avant de te connecter.")};
+$('logout').onclick=async()=>{await sb.auth.signOut();user=null;profile=null;show('app',false);show('auth',true)};
+async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
+let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
+show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
+show('adminTab',p.role==='owner'||p.role==='admin');await refresh()}
+async function refresh(){await Promise.all([renderRequests(),renderBalances()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab});
+async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
+$('requestsList').innerHTML=data.map(r=>`<div class="item"><div class="row"><strong>${esc(r.profiles?.full_name||'Salarié')}</strong><span class="badge ${r.status==='approved'?'ok':r.status==='rejected'?'no':'wait'}">${status(r.status)}</span></div><p>${fmt(r.start_date)} → ${fmt(r.end_date)}</p><span class="muted">${r.replacements?.[0]?.profiles?.full_name?'Remplaçant proposé : '+esc(r.replacements[0].profiles.full_name):'En attente d’un remplaçant'}</span></div>`).join('')||'<p class="muted">Aucune demande pour le moment.</p>';
+$('replaceLeave').innerHTML=data.filter(r=>r.user_id!==user.id&&r.status==='pending'&&(!r.replacements||!r.replacements.length)).map(r=>`<option value="${r.id}">${esc(r.profiles?.full_name||'Salarié')} — ${fmt(r.start_date)} au ${fmt(r.end_date)}</option>`).join('')}
+$('sendLeave').onclick=async()=>{const s=$('leaveStart').value,e=$('leaveEnd').value;if(!s||!e||e<s){notice("Vérifie les dates.",true);return}const {error}=await sb.from('leave_requests').insert({user_id:user.id,start_date:s,end_date:e,note:$('leaveNote').value});if(error)notice(error.message,true);else{notice("Demande envoyée.");$('leaveNote').value='';await refresh()}}
+$('compMode').onchange=()=>show('recoveryFields',$('compMode').value==='recovery');
+$('sendReplacement').onclick=async()=>{const leaveId=$('replaceLeave').value,mode=$('compMode').value,recovery=$('recoveryDate').value;if(!leaveId){notice("Aucune demande disponible pour un remplacement.",true);return}if(mode==='recovery'&&!recovery){notice("Choisis une date de récupération.",true);return}
+const {error}=await sb.rpc('propose_replacement',{p_leave_id:leaveId,p_mode:mode,p_recovery_date:mode==='recovery'?recovery:null});if(error)notice(error.message,true);else{notice("Proposition transmise. Le choix de compensation est confidentiel.");await refresh()}}
+async function renderBalances(){let {data,error}=await sb.from('balances').select('*').eq('user_id',user.id).single();$('myBalances').innerHTML=error?'<p class="muted">Compteurs non initialisés.</p>':`<div class="grid"><div class="item"><span class="muted">Congés payés disponibles</span><h2>${data.leave_days} jours</h2></div><div class="item"><span class="muted">Récupération disponible</span><h2>${data.recovery_days} jours</h2></div></div>`}
+async function renderAdmin(){let {data:bs}=await sb.from('balances').select('*,profiles!balances_user_id_fkey(full_name)').order('created_at');$('allBalances').innerHTML=(bs||[]).map(b=>`<div class="item"><strong>${esc(b.profiles.full_name)}</strong><div class="grid"><div><label>Congés payés (jours)</label><input type="number" step=".5" id="l${b.user_id}" value="${b.leave_days}"></div><div><label>Récupération (jours)</label><input type="number" step=".5" id="r${b.user_id}" value="${b.recovery_days}"></div></div><div class="actions"><button onclick="saveBalance('${b.user_id}')">Enregistrer les compteurs</button></div></div>`).join('');
+if(profile.role==='owner'){let {data:rs}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name)').eq('status','pending').order('created_at');$('adminRequests').innerHTML=(rs||[]).map(r=>`<div class="item"><strong>${esc(r.profiles.full_name)}</strong> — ${fmt(r.start_date)} au ${fmt(r.end_date)}<div class="actions"><button onclick="decide('${r.id}','approved')">Valider définitivement</button><button class="danger" onclick="decide('${r.id}','rejected')">Refuser</button></div></div>`).join('')||'<p class="muted">Aucune demande en attente.</p>';
+let {data:priv}=await sb.from('replacement_details').select('*,leave_requests(start_date,end_date,profiles!leave_requests_user_id_fkey(full_name)),profiles!replacement_details.replacement_user_id_fkey(full_name)').order('created_at',{ascending:false});$('privateDetails').innerHTML=(priv||[]).map(d=>`<div class="item"><strong>${esc(d.profiles.full_name)}</strong> remplace ${esc(d.leave_requests.profiles.full_name)}<p>${d.mode==='paid'?'Rémunération':'Récupération'} ${d.recovery_date?'— date proposée : '+fmt(d.recovery_date):''}</p>${d.mode==='recovery'?`<div class="actions"><button onclick="approveRecovery('${d.id}')">Approuver la récupération</button></div>`:''}</div>`).join('')||'<p class="muted">Aucune proposition confidentielle.</p>'}else{$('adminRequests').innerHTML='<p class="muted">La validation finale est réservée à Ibrahim.</p>';$('privateDetails').innerHTML='<p class="muted">Les choix de compensation sont confidentiels et réservés à Ibrahim.</p>'}}
+window.saveBalance=async id=>{const l=Number($('l'+id).value),r=Number($('r'+id).value);const {error}=await sb.from('balances').update({leave_days:l,recovery_days:r,updated_at:new Date().toISOString()}).eq('user_id',id);notice(error?error.message:'Compteurs enregistrés.',!!error);if(!error)await renderBalances()};
+window.decide=async(id,status)=>{const {error}=await sb.from('leave_requests').update({status,decided_by:user.id,decided_at:new Date().toISOString()}).eq('id',id);notice(error?error.message:'Décision enregistrée.',!!error);await refresh()};
+window.approveRecovery=async id=>{const {error}=await sb.from('replacement_details').update({recovery_approved:true}).eq('id',id);notice(error?error.message:'Récupération approuvée.',!!error);await renderAdmin()};
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmt(s){return new Date(s+'T12:00:00').toLocaleDateString('fr-FR')}
+function status(s){return ({pending:'En attente',approved:'Validée',rejected:'Refusée'})[s]||s}
+init();
+</script></body></html>
