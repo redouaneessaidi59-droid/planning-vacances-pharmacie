@@ -241,4 +241,60 @@ $('savePassword').onclick = async () => {
     btn.disabled = false;
   }
 };
+
+let calendarDate = new Date();
+
+function renderCalendar() {
+  const grid = document.getElementById('calendarGrid');
+  const title = document.getElementById('calendarTitle');
+  if (!grid || !title) return;
+
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+
+  title.textContent = calendarDate.toLocaleDateString('fr-FR', {
+    month: 'long',
+    year: 'numeric'
+  });
+
+  grid.innerHTML = '';
+
+  ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].forEach(day => {
+    const header = document.createElement('div');
+    header.className = 'calendar-header';
+    header.textContent = day;
+    grid.appendChild(header);
+  });
+
+  const firstDay = (new Date(year, month, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (let i = 0; i < firstDay; i++) {
+    grid.appendChild(document.createElement('div'));
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'calendar-day';
+
+    const number = document.createElement('strong');
+    number.textContent = day;
+    cell.appendChild(number);
+
+    grid.appendChild(cell);
+  }
+}
+
+document.getElementById('calendarPrev').onclick = () => {
+  calendarDate.setMonth(calendarDate.getMonth() - 1);
+  renderCalendar();
+};
+
+document.getElementById('calendarNext').onclick = () => {
+  calendarDate.setMonth(calendarDate.getMonth() + 1);
+  renderCalendar();
+};
+
+renderCalendar();
+
 </script></body></html>
