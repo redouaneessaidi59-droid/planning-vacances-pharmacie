@@ -44,6 +44,18 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 </section>
 <section id="app" class="hidden">
 <div class="card row"><div><strong id="who"></strong><div class="muted" id="role"></div></div><button class="secondary" id="logout">Déconnexion</button></div>
+<div class="card">
+  <button id="changePasswordBtn" type="button">Changer mon mot de passe</button>
+  <div id="passwordForm" class="hidden">
+    <label>Nouveau mot de passe</label>
+    <input id="newPassword" type="password" autocomplete="new-password">
+    <label>Confirmer le mot de passe</label>
+    <input id="confirmPassword" type="password" autocomplete="new-password">
+    <div class="actions">
+      <button id="savePassword" type="button">Enregistrer le nouveau mot de passe</button>
+    </div>
+  </div>
+</div>
 <div class="tabs">
 <button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
 </div>
@@ -148,4 +160,39 @@ $('createTeamBtn').onclick = async () => {
 };
 
 $('teamManagement').classList.add('hidden');
+$('changePasswordBtn').onclick = () => {
+  $('passwordForm').classList.toggle('hidden');
+};
+
+$('savePassword').onclick = async () => {
+  const password = $('newPassword').value;
+  const confirmation = $('confirmPassword').value;
+
+  if (password.length < 12) {
+    notice('Le mot de passe doit contenir au moins 12 caractères.', true);
+    return;
+  }
+
+  if (password !== confirmation) {
+    notice('Les mots de passe ne correspondent pas.', true);
+    return;
+  }
+
+  const btn = $('savePassword');
+  btn.disabled = true;
+
+  try {
+    const { error } = await sb.auth.updateUser({ password });
+    if (error) throw error;
+
+    $('newPassword').value = '';
+    $('confirmPassword').value = '';
+    $('passwordForm').classList.add('hidden');
+    notice('Mot de passe modifié avec succès.');
+  } catch (e) {
+    notice('Erreur : ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+};
 </script></body></html>
