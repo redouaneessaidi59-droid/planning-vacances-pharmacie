@@ -59,6 +59,10 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 <div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
 <section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
 <section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
+<section id="teamManagement" class="card">
+  <h2>Gestion des comptes salariés</h2>
+  <button id="createTeamBtn" type="button">Créer les comptes de l'équipe</button>
+  <div id="teamCreationResult"></div>
 </section>
 </main>
 <footer>Application de gestion interne — les soldes sont initialisés à zéro. Les compteurs congés et récupération sont séparés. Vérifier les droits conventionnels et le traitement du temps de remplacement avant toute décision de paie ou de récupération.</footer>
@@ -91,6 +95,14 @@ show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').t
 show('adminTab',p.role==='owner'||p.role==='admin');await refresh()}
 async function refresh(){await Promise.all([renderRequests(),renderBalances()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab});
+document.querySelectorAll('[data-tab]').forEach(b => {
+  b.addEventListener('click', () => {
+    $('teamManagement').classList.toggle(
+      'hidden',
+      b.dataset.tab !== 'admin' || profile?.role !== 'owner'
+    );
+  });
+});
 async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
 $('requestsList').innerHTML=data.map(r=>`<div class="item"><div class="row"><strong>${esc(r.profiles?.full_name||'Salarié')}</strong><span class="badge ${r.status==='approved'?'ok':r.status==='rejected'?'no':'wait'}">${status(r.status)}</span></div><p>${fmt(r.start_date)} → ${fmt(r.end_date)}</p><span class="muted">${r.replacements?.[0]?.profiles?.full_name?'Remplaçant proposé : '+esc(r.replacements[0].profiles.full_name):'En attente d’un remplaçant'}</span></div>`).join('')||'<p class="muted">Aucune demande pour le moment.</p>';
 $('replaceLeave').innerHTML=data.filter(r=>r.user_id!==user.id&&r.status==='pending'&&(!r.replacements||!r.replacements.length)).map(r=>`<option value="${r.id}">${esc(r.profiles?.full_name||'Salarié')} — ${fmt(r.start_date)} au ${fmt(r.end_date)}</option>`).join('')}
@@ -109,4 +121,30 @@ function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function fmt(s){return new Date(s+'T12:00:00').toLocaleDateString('fr-FR')}
 function status(s){return ({pending:'En attente',approved:'Validée',rejected:'Refusée'})[s]||s}
 init();
+$('createTeamBtn').onclick = async () => {
+  const btn = $('createTeamBtn');
+  const result = $('teamCreationResult');
+  if (!user || profile?.role !== 'owner') {
+    result.textContent = 'Accès réservé au propriétaire.';
+    return;
+  }
+  if (!confirm('Créer les comptes des 5 salariés ?')) return;
+
+  btn.disabled = true;
+  result.textContent = 'Création en cours…';
+
+  try {
+    const { data, error } = await sb.functions.invoke('manage-team-users', {
+      body: { action: 'create_team' }
+    });
+    if (error) throw error;
+    result.textContent = JSON.stringify(data, null, 2);
+  } catch (e) {
+    result.textContent = 'Erreur : ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+$('teamManagement').classList.add('hidden');
 </script></body></html>
