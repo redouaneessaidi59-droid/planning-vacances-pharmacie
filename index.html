@@ -59,6 +59,14 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 <div class="tabs">
 <button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
 </div>
+<section id="calendarSection" class="card">
+  <div class="row">
+    <button type="button" id="calendarPrev">❮</button>
+    <h2 id="calendarTitle">Calendrier des congés</h2>
+    <button type="button" id="calendarNext">❯</button>
+  </div>
+  <div id="calendarGrid"></div>
+</section>
 <section id="overview" class="card"><h2>Demandes de l'équipe</h2><p class="muted">Les dates et le statut sont visibles par l'équipe. Les modalités de rémunération restent réservées à la direction.</p><div id="requestsList">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
 <div class="grid"><div><label>Premier jour d'absence</label><input type="date" id="leaveStart"></div><div><label>Dernier jour d'absence</label><input type="date" id="leaveEnd"></div></div>
