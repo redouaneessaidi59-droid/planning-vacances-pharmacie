@@ -32,12 +32,14 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 <p class="muted">Renseigne les deux paramètres publics de ton projet Supabase. Ils ne sont pas des mots de passe. Ne partage jamais la clé « service_role ».</p>
 <div class="grid"><div><label>URL du projet Supabase</label><input id="supabaseUrl" placeholder="https://xxxx.supabase.co"></div><div><label>Clé publique (anon / publishable)</label><input id="supabaseKey" placeholder="sb_publishable_... ou clé anon"></div></div>
 <div class="actions"><button id="saveConfig">Enregistrer et continuer</button></div>
-</section>
 <section id="auth" class="card hidden">
 <h2>Connexion</h2>
-<div class="grid"><div><label>Adresse e-mail</label><input id="email" type="email" autocomplete="username"></div><div><label>Mot de passe</label><input id="password" type="password" autocomplete="current-password"></div></div>
-<div class="actions"><button id="login">Se connecter</button><button class="secondary" id="signup">Créer mon compte</button></div>
-<p class="hint">Chaque membre doit créer son compte avec son adresse e-mail personnelle. Ibrahim et Redouane recevront ensuite les droits de gestion via le réglage administrateur décrit dans le guide.</p>
+<div class="grid">
+<div><label>Identifiant ou adresse e-mail</label><input id="email" type="text" autocomplete="username"></div>
+<div><label>Mot de passe</label><input id="password" type="password" autocomplete="current-password"></div>
+</div>
+<div class="actions"><button id="login">Se connecter</button></div>
+<p class="hint">Connecte-toi avec ton identifiant et ton mot de passe fournis par Redouane.</p>
 </section>
 <section id="app" class="hidden">
 <div class="card row"><div><strong id="who"></strong><div class="muted" id="role"></div></div><button class="secondary" id="logout">Déconnexion</button></div>
@@ -70,7 +72,17 @@ function init(){const c=cfg();if(c.url&&c.key){$('supabaseUrl').value=c.url;$('s
 function connect(url,key){if(!window.supabase){notice("Impossible de charger la bibliothèque de connexion. Vérifie ta connexion internet.",true);return}
 sb=window.supabase.createClient(url,key);show('config',false);show('auth',true);sb.auth.getSession().then(({data})=>{if(data.session)loadUser()})}
 $('saveConfig').onclick=()=>{const u=$('supabaseUrl').value.trim(),k=$('supabaseKey').value.trim();if(!u.startsWith('https://')||!k){notice("URL ou clé publique manquante.",true);return}localStorage.setItem('pv_url',u);localStorage.setItem('pv_key',k);connect(u,k)};
-$('login').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(error)notice(error.message,true);else loadUser()};
+$('login').onclick=async()=>{
+ const identifiant=$('email').value.trim().toLowerCase();
+ let email=identifiant;
+ if(!identifiant.includes('@')){
+   if(identifiant==='redouane'||identifiant==='essaidi') email='essaidi@live.fr';
+   else if(identifiant==='ibrahim') email='isaddouki@gmail.com';
+   else email=identifiant+'@planning.test';
+ }
+ const {error}=await sb.auth.signInWithPassword({email,password:$('password').value});
+ if(error)notice('Identifiant ou mot de passe incorrect',true);else loadUser()
+};
 $('signup').onclick=async()=>{const {data,error}=await sb.auth.signUp({email:$('email').value,password:$('password').value});if(error)notice(error.message,true);else notice(data.session?"Compte créé.":"Compte créé : vérifie l'e-mail de confirmation avant de te connecter.")};
 $('logout').onclick=async()=>{await sb.auth.signOut();user=null;profile=null;show('app',false);show('auth',true)};
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
