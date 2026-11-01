@@ -282,12 +282,30 @@ function renderCalendar() {
     cell.className = 'calendar-day';
 
     const number = document.createElement('strong');
-    number.textContent = day;
-    cell.appendChild(number);
 
-    grid.appendChild(cell);
+number.textContent = day;
+cell.appendChild(number);
+
+const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+(window.calendarLeaves || []).forEach(leave => {
+  if (leave.status === 'rejected') return;
+  if (date < leave.start_date || date > leave.end_date) return;
+
+  const event = document.createElement('div');
+  event.className = 'calendar-event ' +
+    (leave.status === 'approved'
+      ? 'calendar-approved'
+      : 'calendar-pending');
+
+  event.textContent = leave.profiles?.full_name || 'Salarié';
+  cell.appendChild(event);
+});
+
+grid.appendChild(cell);
   }
 }
+
 
 document.getElementById('calendarPrev').onclick = () => {
   calendarDate.setMonth(calendarDate.getMonth() - 1);
