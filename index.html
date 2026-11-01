@@ -21,6 +21,44 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 small.privacy{display:block;background:#f5f1e8;padding:10px;border-radius:9px;color:#725521;margin-top:8px}
 footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-size:12px}
 @media(max-width:600px){header{padding:20px 17px}main{margin-top:12px}.card{padding:15px}table{font-size:12px}th,td{padding:7px}}
+
+#calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 18px;
+}
+.calendar-day {
+  min-height: 95px;
+  padding: 8px;
+  border: 1px solid #e1e9e4;
+  border-radius: 9px;
+  background: white;
+  font-size: 13px;
+}
+.calendar-header {
+  text-align: center;
+  font-weight: bold;
+  padding: 10px 2px;
+  background: #e9f0ec;
+  border-radius: 8px;
+}
+.calendar-event {
+  padding: 4px;
+  margin-top: 4px;
+  border-radius: 5px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.calendar-approved { background: #d9f3e4; }
+.calendar-pending { background: #fff0c9; }
+.calendar-urgent { background: #f8d9d9; }
+.calendar-recovery { background: #dcecff; }
+@media(max-width:600px) {
+  .calendar-day { min-height: 65px; padding: 4px; }
+  .calendar-event { font-size: 10px; }
+}
+
 </style>
 </head>
 <body>
