@@ -318,5 +318,46 @@ document.getElementById('calendarNext').onclick = () => {
 };
 
 renderCalendar();
+const ancienRenderRequests = renderRequests;
 
+renderRequests = async function () {
+  await ancienRenderRequests();
+
+  const demandes = window.calendarLeaves || [];
+  const cartes = document.querySelectorAll('#requestsList .item');
+
+  demandes.forEach((demande, index) => {
+    if (demande.user_id !== user?.id || demande.status !== 'pending') return;
+
+    const bouton = document.createElement('button');
+    bouton.textContent = 'Annuler ma demande';
+    bouton.className = 'danger';
+    bouton.style.marginTop = '10px';
+
+    bouton.onclick = async () => {
+      if (!confirm('Voulez-vous annuler cette demande ?')) return;
+
+      bouton.disabled = true;
+
+      const { data, error } = await sb
+        .from('leave_requests')
+        .delete()
+        .eq('id', demande.id)
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .select('id');
+
+      if (error || !data?.length) {
+        notice(error?.message || 'Annulation non autorisée par Supabase.', true);
+        bouton.disabled = false;
+        return;
+      }
+
+      await refresh();
+      notice('Demande annulée avec succès.');
+    };
+
+    cartes[index]?.appendChild(bouton);
+  });
+};
 </script></body></html>
