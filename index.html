@@ -163,6 +163,10 @@ document.querySelectorAll('[data-tab]').forEach(b => {
   });
 });
 async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
+window.calendarLeaves = data || [];
+if (typeof renderCalendar === 'function') {
+  renderCalendar();
+}                    
 $('requestsList').innerHTML=data.map(r=>`<div class="item"><div class="row"><strong>${esc(r.profiles?.full_name||'Salarié')}</strong><span class="badge ${r.status==='approved'?'ok':r.status==='rejected'?'no':'wait'}">${status(r.status)}</span></div><p>${fmt(r.start_date)} → ${fmt(r.end_date)}</p><span class="muted">${r.replacements?.[0]?.profiles?.full_name?'Remplaçant proposé : '+esc(r.replacements[0].profiles.full_name):'En attente d’un remplaçant'}</span></div>`).join('')||'<p class="muted">Aucune demande pour le moment.</p>';
 $('replaceLeave').innerHTML=data.filter(r=>r.user_id!==user.id&&r.status==='pending'&&(!r.replacements||!r.replacements.length)).map(r=>`<option value="${r.id}">${esc(r.profiles?.full_name||'Salarié')} — ${fmt(r.start_date)} au ${fmt(r.end_date)}</option>`).join('')}
 $('sendLeave').onclick=async()=>{const s=$('leaveStart').value,e=$('leaveEnd').value;if(!s||!e||e<s){notice("Vérifie les dates.",true);return}const {error}=await sb.from('leave_requests').insert({user_id:user.id,start_date:s,end_date:e,note:$('leaveNote').value});if(error)notice(error.message,true);else{notice("Demande envoyée.");$('leaveNote').value='';await refresh()}}
