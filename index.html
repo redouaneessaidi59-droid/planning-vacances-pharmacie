@@ -83,7 +83,6 @@ $('login').onclick=async()=>{
  const {error}=await sb.auth.signInWithPassword({email,password:$('password').value});
  if(error)notice('Identifiant ou mot de passe incorrect',true);else loadUser()
 };
-$('signup').onclick=async()=>{const {data,error}=await sb.auth.signUp({email:$('email').value,password:$('password').value});if(error)notice(error.message,true);else notice(data.session?"Compte créé.":"Compte créé : vérifie l'e-mail de confirmation avant de te connecter.")};
 $('logout').onclick=async()=>{await sb.auth.signOut();user=null;profile=null;show('app',false);show('auth',true)};
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
