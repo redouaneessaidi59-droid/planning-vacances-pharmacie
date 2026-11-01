@@ -73,7 +73,7 @@ let sb=null,user=null,profile=null,tab="overview";
 const $=id=>document.getElementById(id);
 function notice(msg,error=false){$('notice').textContent=msg;$('notice').style.display='block';$('notice').className=error?'error':''}
 function show(id,on){$(id).classList.toggle('hidden',!on)}
-function cfg(){return {url:localStorage.getItem('pv_url'),key:localStorage.getItem('pv_key')}}
+function cfg(){return {url:'https://qdmjlvxvlgwfipzxpcoe.supabase.co',key:'sb_publishable_c7-enZ9x_7HVpHa19_puSw_FWm_AIbs'}}
 function init(){const c=cfg();if(c.url&&c.key){$('supabaseUrl').value=c.url;$('supabaseKey').value=c.key;connect(c.url,c.key)}}
 function connect(url,key){if(!window.supabase){notice("Impossible de charger la bibliothèque de connexion. Vérifie ta connexion internet.",true);return}
 sb=window.supabase.createClient(url,key);show('config',false);show('auth',true);sb.auth.getSession().then(({data})=>{if(data.session)loadUser()})}
