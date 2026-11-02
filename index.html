@@ -207,53 +207,74 @@ async function renderAdmin() {
   if (profile.role === 'owner' || profile.role === 'admin') {
     const { data: rs, error } = await sb
       .from('leave_requests')
-      .select('*,profiles!leave_requests_user_id_fkey(full_name)')
+      .select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(id,replacement_user_id,confirmed_at,profiles!replacements_replacement_user_id_fkey(full_name))')
       .eq('status', 'pending')
       .order('created_at');
 
     if (error) {
       $('adminRequests').textContent = error.message;
     } else {
-      $('adminRequests').innerHTML = (rs || []).map(r => `
-        <div class="item">
-          <strong>${esc(r.profiles.full_name)}</strong>
-          — ${fmt(r.start_date)} au ${fmt(r.end_date)}
+      $('adminRequests').innerHTML = (rs || []).map(r => {
+        const remplacement = r.replacements?.[0];
 
-          <p>
-            Remplacement :
-            <strong>${
-              r.replacement_required === true
-                ? 'Obligatoire'
-                : r.replacement_required === false
-                  ? 'Non nécessaire'
-                  : 'À définir'
-            }</strong>
-          </p>
+        return `
+          <div class="item">
+            <strong>${esc(r.profiles.full_name)}</strong>
+            — ${fmt(r.start_date)} au ${fmt(r.end_date)}
 
-          <div class="actions">
-            <button class="secondary"
-              onclick="setReplacementRequirement('${r.id}', true)">
-              Remplacement obligatoire
-            </button>
+            <p>
+              Remplacement :
+              <strong>${
+                r.replacement_required === true
+                  ? 'Obligatoire'
+                  : r.replacement_required === false
+                    ? 'Non nécessaire'
+                    : 'À définir'
+              }</strong>
+            </p>
 
-            <button class="secondary"
-              onclick="setReplacementRequirement('${r.id}', false)">
-              Aucun remplacement nécessaire
-            </button>
+            ${remplacement ? `
+              <p>
+                Remplaçant proposé :
+                <strong>${esc(remplacement.profiles?.full_name || 'Salarié')}</strong>
+              </p>
 
-            <button onclick="decide('${r.id}','approved')">
-              Valider définitivement
-            </button>
+              ${remplacement.confirmed_at ? `
+                <p style="color:green"><strong>Remplaçant confirmé</strong></p>
+              ` : `
+                <button class="secondary"
+                  onclick="confirmReplacement('${r.id}')">
+                  Confirmer ce remplaçant
+                </button>
+              `}
+            ` : `
+              <p class="muted">Aucun remplaçant proposé pour le moment.</p>
+            `}
 
-            <button class="danger" onclick="decide('${r.id}','rejected')">
-              Refuser
-            </button>
+            <div class="actions">
+              <button class="secondary"
+                onclick="setReplacementRequirement('${r.id}', true)">
+                Remplacement obligatoire
+              </button>
+
+              <button class="secondary"
+                onclick="setReplacementRequirement('${r.id}', false)">
+                Aucun remplacement nécessaire
+              </button>
+
+              <button onclick="decide('${r.id}','approved')">
+                Valider définitivement
+              </button>
+
+              <button class="danger" onclick="decide('${r.id}','rejected')">
+                Refuser
+              </button>
+            </div>
           </div>
-        </div>
-      `).join('') || '<p class="muted">Aucune demande en attente.</p>';
+        `;
+      }).join('') || '<p class="muted">Aucune demande en attente.</p>';
     }
   }
-
   if (profile.role === 'owner') {
     const { data: priv, error } = await sb
       .from('replacement_details')
