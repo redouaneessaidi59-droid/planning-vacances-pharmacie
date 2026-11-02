@@ -278,7 +278,15 @@ async function renderAdmin() {
   if (profile.role === 'owner') {
     const { data: priv, error } = await sb
       .from('replacement_details')
-      .select('*,leave_requests(start_date,end_date,profiles!leave_requests_user_id_fkey(full_name)),profiles!replacement_details.replacement_user_id_fkey(full_name)')
+      .select(`
+  *,
+  leave_requests (
+    start_date,
+    end_date,
+    profiles!leave_requests_user_id_fkey (full_name)
+  ),
+  profiles!replacement_details_replacement_user_id_fkey (full_name)
+`)
       .order('created_at', { ascending: false });
 
     if (error) {
