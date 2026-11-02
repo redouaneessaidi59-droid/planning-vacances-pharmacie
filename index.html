@@ -328,7 +328,19 @@ window.setReplacementRequirement = async (id, required) => {
 
   await refresh();
 };
+window.confirmReplacement = async (id) => {
+  const { error } = await sb.rpc('confirm_replacement', {
+    p_leave_id: id
+  });
 
+  if (error) {
+    notice(error.message, true);
+    return;
+  }
+
+  notice('Remplaçant confirmé avec succès.');
+  await refresh();
+};
 window.saveBalance=async id=>{const l=Number($('l'+id).value),r=Number($('r'+id).value);const {error}=await sb.from('balances').update({leave_days:l,recovery_days:r,updated_at:new Date().toISOString()}).eq('user_id',id);notice(error?error.message:'Compteurs enregistrés.',!!error);if(!error)await renderBalances()};
 window.decide=async(id,status)=>{const {error}=await sb.from('leave_requests').update({status,decided_by:user.id,decided_at:new Date().toISOString()}).eq('id',id);notice(error?error.message:'Décision enregistrée.',!!error);await refresh()};
 window.approveRecovery=async id=>{const {error}=await sb.from('replacement_details').update({recovery_approved:true}).eq('id',id);notice(error?error.message:'Récupération approuvée.',!!error);await renderAdmin()};
