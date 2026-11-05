@@ -173,7 +173,7 @@ async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;i
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
 show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
-async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
+async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;show('calendarSection',['overview','request','availability','recovery','saturdays','schedules'].includes(tab));if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
@@ -474,6 +474,11 @@ function scheduleEditorLoad(){
  const slots=v?scheduleSlots.filter(s=>s.version_id===v.id).sort((a,b)=>a.weekday-b.weekday||a.start_time.localeCompare(b.start_time)):[];
  $('scheduleSlots').value=slots.map(s=>s.weekday+';'+s.start_time.slice(0,5)+';'+s.end_time.slice(0,5)).join('\n');
 }
+async function loadScheduleCalendar(){
+ const [p,v,slots]=await Promise.all([sb.from('profiles').select('id,full_name'),sb.from('work_schedule_versions').select('id,employee_id,effective_from,created_at'),sb.from('work_schedule_slots').select('version_id,weekday,start_time,end_time')]);
+ if(p.error||v.error||slots.error)return;
+ schedulePeople=p.data||[];scheduleVersions=v.data||[];scheduleSlots=slots.data||[];renderCalendar();
+}
 async function renderSchedules(){
  if(!user)return;
  const [p,v,s]=await Promise.all([
@@ -529,13 +534,7 @@ let recMonth=new Date(), team=[], sats=[], swaps=[], recs=[], scheduleLeaves=[];
 function nm(id){return team.find(p=>p.id===id)?.full_name||'Salarié'}
 const employeePalette=['#1d4ed8','#dc2626','#16a34a','#9333ea','#ea580c','#0891b2','#be185d','#64748b'];
 const employeeNames=['Redouane','Ibrahim','Anissa','Sylvain','Laurence','Séverine','Fanaella','Mohamed'];
-function employeeColor(name){
- const n=String(name||'').trim().toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
- const i=employeeNames.findIndex(x=>n.includes(x.toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'')));
- if(i>=0)return employeePalette[i];
- let hash=0;for(const c of n)hash=(hash*31+c.charCodeAt(0))>>>0;
- return employeePalette[hash%employeePalette.length];
-}
+function employeeColor(name){const n=String(name||'').trim().toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'');const i=employeeNames.findIndex(x=>n.includes(x.toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'')));if(i>=0)return employeePalette[i];let hash=0;for(const c of n)hash=(hash*31+c.charCodeAt(0))>>>0;return employeePalette[hash%employeePalette.length]}
 function employeeTag(name,label){return '<span style="display:inline-block;padding:3px 6px;border-radius:5px;background:'+employeeColor(name)+';color:white;font-weight:600">'+esc(label||name||'Salarié')+'</span>'}
 
 function shortTime(t){return String(t||'').slice(0,5)}
@@ -668,6 +667,18 @@ function scheduleBars(date){
  const weekday=new Date(date+'T12:00:00').getDay();const index=weekday===0?7:weekday;
  return (schedulePeople||[]).flatMap(p=>{const v=scheduleCurrent(p.id,date);if(!v)return[];return scheduleSlots.filter(x=>x.version_id===v.id&&Number(x.weekday)===index).map(x=>({name:p.full_name,start:String(x.start_time).slice(0,5),end:String(x.end_time).slice(0,5)}))});
 }
+function remainingStaff(date){
+ if(!schedulePeople.length||!scheduleVersions.length)return null;
+ const weekday=new Date(date+'T12:00:00').getDay();if(weekday===0)return 0;
+ const day=weekday===0?7:weekday;
+ const leaves=window.calendarLeaves||[];
+ return schedulePeople.filter(p=>{
+  const version=scheduleCurrent(p.id,date);if(!version)return false;
+  if(!scheduleSlots.some(x=>x.version_id===version.id&&Number(x.weekday)===day))return false;
+  if(p.id===user?.id)return false;
+  return !leaves.some(l=>l.user_id===p.id&&l.status==='approved'&&date>=l.start_date&&date<=l.end_date);
+ }).length;
+}
 function renderCalendar() {
   const grid = document.getElementById('calendarGrid');
   const title = document.getElementById('calendarTitle');
@@ -706,9 +717,9 @@ function renderCalendar() {
 number.textContent = day;
 cell.appendChild(number);
 
-const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;cell.classList.add('calendar-clickable');cell.onclick=()=>{selectLeaveDate(date)};if(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart){cell.style.outline='3px solid #236c5b';cell.style.background='#d7f2e5'};
+const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;cell.classList.add('calendar-clickable');cell.onclick=()=>{selectLeaveDate(date)};if(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const count=remainingStaff(date);const badge=document.createElement('div');badge.style.cssText='font-size:20px;font-weight:800;text-align:center;margin-top:10px';badge.textContent=count===null?'Effectif ?':count+' restant(s)';cell.appendChild(badge)}};
 
-(window.calendarLeaves || []).forEach(leave => {
+if(tab!=='request')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
   if (date < leave.start_date || date > leave.end_date) return;
 
