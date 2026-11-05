@@ -255,10 +255,13 @@ async function renderBalances(){const accrual=await sb.rpc('apply_monthly_leave_
 
 async function showRecoveryHours(){
  const el=$('myRecoveryHours');if(!el)return;
- const {data,error}=await sb.rpc('replacement_recovery_hours',{p_employee_id:user.id});
- if(error){el.textContent='Heures de récupération indisponibles';return}
- const n=(data||[]).reduce((a,x)=>a+Number(x.minutes||0),0);
- el.textContent=Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' disponibles';
+ const {data,error}=await sb.rpc('recovery_credit_breakdown',{p_employee_id:user.id});
+ if(error){el.textContent='Récupération indisponible : '+error.message;return}
+ const half=(data||[]).reduce((a,x)=>a+Number(x.half_days||0),0);
+ const n=(data||[]).reduce((a,x)=>a+Number(x.extra_minutes||0),0);
+ const days=Math.floor(half/2),remaining=half%2;
+ el.textContent=(days?days+' jour'+(days>1?'s':''):'')+(remaining?(days?' + ':'')+'0,5 jour':'')+((days||remaining)?' + ':'')+Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' acquis';
+ const info=document.createElement('small');info.className='muted';info.textContent='Crédits issus des remplacements validés. La déduction automatique des récupérations prises reste à finaliser.';el.appendChild(info);
 }
 let paidHoursMonth=new Date().toISOString().slice(0,7);
 async function renderPaidHours(){
