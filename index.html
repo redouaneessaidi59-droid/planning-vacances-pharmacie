@@ -714,13 +714,30 @@ function saturdaySlotMenu(cell,date){
  const old=cell.querySelector('.sat-inline-menu');if(old){old.remove();return}
  const slots=saturdayMyShifts(date);
  const menu=document.createElement('div');menu.className='sat-inline-menu';
- menu.style.cssText='background:#fff;border:1px solid #bbb;border-radius:8px;padding:8px;margin-top:6px;color:#222;position:relative;z-index:3';
+ menu.style.cssText='background:#fff;border:1px solid #bbb;border-radius:8px;padding:10px;margin-top:6px;color:#222;position:relative;z-index:3';
  const title=document.createElement('strong');title.textContent='Demander à être remplacé';menu.appendChild(title);
+ const choices=document.createElement('div');choices.style.cssText='display:flex;flex-direction:column;gap:7px;margin:9px 0';
  for(const slot of slots){
   const existing=satCovers.some(x=>x.saturday_date===date&&x.requester_id===user.id&&x.start_time.slice(0,5)===slot.start&&x.end_time.slice(0,5)===slot.end&&['open','pending_manager','approved'].includes(x.status));
-  const btn=document.createElement('button');btn.type='button';btn.textContent=slot.start+'–'+slot.end+(existing?' · déjà demandé':'');btn.disabled=existing;btn.style.margin='4px';
-  btn.onclick=e=>{e.stopPropagation();requestSaturdayCover(date,slot.start,slot.end)};menu.appendChild(btn);
+  const label=document.createElement('label');label.style.cssText='display:flex;align-items:center;gap:8px;cursor:pointer';
+  const check=document.createElement('input');check.type='checkbox';check.value=slot.start+'|'+slot.end;check.disabled=existing;check.style.width='auto';
+  label.appendChild(check);label.appendChild(document.createTextNode(slot.start+'–'+slot.end+(existing?' (déjà demandé)':'')));choices.appendChild(label);
  }
+ menu.appendChild(choices);
+ const confirm=document.createElement('button');confirm.type='button';confirm.textContent='Confirmer la demande';confirm.disabled=true;
+ const update=()=>{confirm.disabled=!choices.querySelector('input:checked')};choices.addEventListener('change',update);
+ confirm.onclick=async e=>{
+  e.stopPropagation();
+  const selected=[...choices.querySelectorAll('input:checked')].map(x=>x.value.split('|'));
+  if(!selected.length)return;
+  confirm.disabled=true;confirm.textContent='Enregistrement…';
+  const rows=selected.map(([start_time,end_time])=>({saturday_date:date,requester_id:user.id,start_time,end_time}));
+  const {error}=await sb.from('saturday_cover_requests').insert(rows);
+  if(error){msgError(error);confirm.textContent='Confirmer la demande';update()}
+  else{notice(selected.length+' créneau(x) demandé(s).');await renderSaturdays()}
+ };
+ menu.appendChild(confirm);
+ const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuler';cancel.style.marginLeft='6px';cancel.onclick=e=>{e.stopPropagation();menu.remove()};menu.appendChild(cancel);
  cell.appendChild(menu);
 }
 window.actSaturdayCover=async(id,action)=>{
