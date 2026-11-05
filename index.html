@@ -524,6 +524,110 @@ $('scheduleSave').onclick=async()=>{
  finally{btn.disabled=false}
 };
 
+
+let recMonth=new Date(), team=[], sats=[], swaps=[], recs=[], scheduleLeaves=[];
+function nm(id){return team.find(p=>p.id===id)?.full_name||'Salarié'}
+function shortTime(t){return String(t||'').slice(0,5)}
+function msgError(e){notice(e?.message||'Erreur, veuillez réessayer.',true)}
+async function getTeam(){const {data,error}=await sb.from('profiles').select('id,full_name,role').order('full_name');if(error)throw error;team=data||[]}
+async function renderAvailability(){
+ try{
+ await getTeam();const {data,error}=await sb.from('replacement_availability').select('*').order('available_date');
+ if(error)throw error;
+ $('availList').innerHTML=(data||[]).map(x=>'<div class="item"><strong>'+esc(nm(x.user_id))+'</strong> — '+fmt(x.available_date)+' '+shortTime(x.start_time)+'–'+shortTime(x.end_time)+' '+esc(x.note)+(x.user_id===user.id?' <button class="secondary" onclick="delAvailability(\''+x.id+'\')">Supprimer</button>':'')+'</div>').join('')||'<p class="muted">Aucune disponibilité déclarée.</p>';
+ }catch(e){msgError(e)}
+}
+$('availSave').onclick=async()=>{
+ const d=$('availDate').value,a=$('availStart').value,b=$('availEnd').value;
+ if(!d||!a||!b||a>=b){notice('Date ou heures invalides.',true);return}
+ const {error}=await sb.from('replacement_availability').insert({user_id:user.id,available_date:d,start_time:a,end_time:b,note:$('availNote').value});
+ if(error)msgError(error);else{notice('Disponibilité ajoutée.');renderAvailability()}
+};
+window.delAvailability=async id=>{const {error}=await sb.from('replacement_availability').delete().eq('id',id).eq('user_id',user.id);if(error)msgError(error);else renderAvailability()};
+async function renderRecovery(){
+ try{
+ await getTeam();
+ const [a,b,c,d]=await Promise.all([
+ sb.from('recovery_requests').select('*').order('created_at',{ascending:false}),
+ sb.from('leave_requests').select('user_id,start_date,end_date,status').eq('status','approved'),
+ sb.from('work_schedule_versions').select('*'),
+ sb.from('work_schedule_slots').select('*')
+ ]);
+ for(const r of [a,b,c,d])if(r.error)throw r.error;
+ recs=a.data||[];scheduleLeaves=b.data||[];scheduleVersions=c.data||[];scheduleSlots=d.data||[];
+ const y=recMonth.getFullYear(),m=recMonth.getMonth(),days=new Date(y,m+1,0).getDate();
+ $('recTitle').textContent=recMonth.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+ let html=['L','M','M','J','V','S','D'].map(x=>'<div class="heading">'+x+'</div>').join('');
+ for(let i=0;i<(new Date(y,m,1).getDay()+6)%7;i++)html+='<div></div>';
+ for(let n=1;n<=days;n++){
+ const date=y+'-'+String(m+1).padStart(2,'0')+'-'+String(n).padStart(2,'0'),wd=(new Date(y,m,n).getDay()+6)%7+1;
+ const version=scheduleCurrent(user.id,date),works=version&&scheduleSlots.some(s=>s.version_id===version.id&&s.weekday===wd);
+ const leave=scheduleLeaves.some(x=>x.user_id===user.id&&x.start_date<=date&&x.end_date>=date);
+ const already=recs.some(x=>x.user_id===user.id&&x.recovery_date===date&&x.status!=='rejected');
+ const cl=leave||already?'busy':works?'':'off';
+ html+='<button type="button" class="'+cl+'" data-rec="'+date+'">'+n+'<small style="display:block">'+(leave?'Congé':already?'Demandé':works?'À étudier':'Repos')+'</small></button>';
+ }
+ $('recCalendar').innerHTML=html;
+ $('recCalendar').querySelectorAll('[data-rec]').forEach(x=>x.onclick=()=>{$('recDate').value=x.dataset.rec;notice('Date choisie : '+fmt(x.dataset.rec))});
+ $('recList').innerHTML='<h3>Mes récupérations</h3>'+recs.filter(x=>x.user_id===user.id).map(x=>'<div class="item">'+fmt(x.recovery_date)+' — '+esc(status(x.status))+'</div>').join('');
+ $('recAdmin').innerHTML=(profile.role==='admin'||profile.role==='owner')?'<h3>À valider</h3>'+recs.filter(x=>x.status==='pending').map(x=>'<div class="item">'+esc(nm(x.user_id))+' '+fmt(x.recovery_date)+' <button onclick="decideRecovery(\''+x.id+'\',true)">Valider</button> <button class="danger" onclick="decideRecovery(\''+x.id+'\',false)">Refuser</button></div>').join(''):'';
+ }catch(e){msgError(e)}
+}
+$('recPrev').onclick=()=>{recMonth.setMonth(recMonth.getMonth()-1,1);renderRecovery()};
+$('recNext').onclick=()=>{recMonth.setMonth(recMonth.getMonth()+1,1);renderRecovery()};
+$('recSend').onclick=async()=>{
+ if(!$('recDate').value){notice('Clique sur une date.',true);return}
+ const {error}=await sb.from('recovery_requests').insert({user_id:user.id,recovery_date:$('recDate').value,note:$('recNote').value});
+ if(error)msgError(error);else{notice('Récupération demandée.');renderRecovery()}
+};
+window.decideRecovery=async(id,accept)=>{
+ const {error}=await sb.from('recovery_requests').update({status:accept?'approved':'rejected',decided_by:user.id}).eq('id',id).eq('status','pending');
+ if(error)msgError(error);else{notice('Décision enregistrée.');renderRecovery()}
+};
+async function renderSaturdays(){
+ try{
+ await getTeam();
+ const [a,b]=await Promise.all([sb.from('saturday_assignments').select('*').order('saturday_date'),sb.from('saturday_swaps').select('*').order('created_at',{ascending:false})]);
+ if(a.error||b.error)throw a.error||b.error;
+ sats=a.data||[];swaps=b.data||[];
+ $('satList').innerHTML=sats.map(x=>'<div class="item"><strong>'+fmt(x.saturday_date)+'</strong> — '+esc(nm(x.user_id))+'</div>').join('');
+ $('satDate').innerHTML=sats.filter(x=>x.user_id===user.id).map(x=>'<option value="'+x.saturday_date+'">'+fmt(x.saturday_date)+'</option>').join('');
+ $('satRecipient').innerHTML=team.filter(x=>x.id!==user.id).map(x=>'<option value="'+x.id+'">'+esc(x.full_name)+'</option>').join('');
+ $('satExchange').innerHTML=sats.filter(x=>x.user_id!==user.id).map(x=>'<option value="'+x.saturday_date+'">'+fmt(x.saturday_date)+' — '+esc(nm(x.user_id))+'</option>').join('');
+ $('satRequests').innerHTML=swaps.map(x=>{
+ let actions='';
+ if(x.status==='pending_colleague'&&x.recipient_id===user.id||x.status==='pending_manager'&&['owner','admin'].includes(profile.role)){
+ actions='<button onclick="answerSaturday(\''+x.id+'\',true)">Accepter</button> <button class="danger" onclick="answerSaturday(\''+x.id+'\',false)">Refuser</button>';
+ }
+ return '<div class="item">'+fmt(x.saturday_date)+' : '+esc(nm(x.requester_id))+' → '+esc(nm(x.recipient_id))+' — '+esc(x.status)+'<div class="actions">'+actions+'</div></div>';
+ }).join('')||'<p class="muted">Aucune demande.</p>';
+ }catch(e){msgError(e)}
+}
+$('satMode').onchange=()=>show('satExchangeWrap',$('satMode').value==='exchange');
+$('satSend').onclick=async()=>{
+ const date=$('satDate').value,recipient=$('satRecipient').value,mode=$('satMode').value,exchange=mode==='exchange'?$('satExchange').value:null;
+ if(!date||!recipient||mode==='exchange'&&!exchange){notice('Sélectionne les samedis et le collègue.',true);return}
+ if(exchange&&sats.find(x=>x.saturday_date===exchange)?.user_id!==recipient){notice('Le samedi proposé doit appartenir au collègue choisi.',true);return}
+ const {error}=await sb.from('saturday_swaps').insert({saturday_date:date,requester_id:user.id,recipient_id:recipient,mode,exchange_date:exchange,compensation:$('satComp').value});
+ if(error)msgError(error);else{notice('Demande transmise au collègue.');renderSaturdays()}
+};
+window.answerSaturday=async(id,accept)=>{const {error}=await sb.rpc('decide_saturday_swap',{p_id:id,p_accept:accept});if(error)msgError(error);else{notice('Décision enregistrée.');renderSaturdays()}};
+async function renderMessages(){
+ try{
+ await getTeam();const {data,error}=await sb.from('direct_messages').select('*').order('created_at');
+ if(error)throw error;
+ $('messageThread').innerHTML=(data||[]).map(x=>'<div class="item"><strong>'+esc(nm(x.sender_id))+'</strong> <small>'+new Date(x.created_at).toLocaleString('fr-FR')+'</small><p>'+esc(x.body)+'</p></div>').join('')||'<p class="muted">Aucun message.</p>';
+ show('messageBody',profile.role!=='admin');show('messageSend',profile.role!=='admin');
+ }catch(e){msgError(e)}
+}
+$('messageSend').onclick=async()=>{
+ const body=$('messageBody').value.trim();if(!body)return;
+ const {data,error:e}=await sb.from('profiles').select('id').eq('role','admin').limit(1);
+ if(e||!data?.length){notice('Responsable introuvable.',true);return}
+ const {error}=await sb.from('direct_messages').insert({sender_id:user.id,recipient_id:data[0].id,body});
+ if(error)msgError(error);else{$('messageBody').value='';notice('Message envoyé.');renderMessages()}
+};
+
 let calendarDate = new Date();
 
 function renderCalendar() {
