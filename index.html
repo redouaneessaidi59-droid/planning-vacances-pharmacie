@@ -857,7 +857,7 @@ if(tab==='schedules'){
     if(to<=from)continue;
     const segment=document.createElement('span');segment.className='schedule-segment';segment.style.bottom=((from-540)/630*100)+'%';segment.style.height=((to-from)/630*100)+'%';segment.style.background=employeeColor(name);segment.title=name+' · '+p.start+'–'+p.end;track.appendChild(segment);
    }
-   lane.appendChild(track);const times=document.createElement('div');times.className='schedule-hours';times.textContent=periods.map(p=>p.start+'–'+p.end).join(' / ');lane.appendChild(times);wrap.appendChild(lane);
+   lane.appendChild(track);wrap.appendChild(lane);
   }
   cell.appendChild(wrap);
  }else{const empty=document.createElement('div');empty.className='schedule-empty';empty.textContent='Aucun horaire renseigné';cell.appendChild(empty)}
