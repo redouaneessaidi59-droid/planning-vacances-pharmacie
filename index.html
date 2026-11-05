@@ -260,29 +260,39 @@ async function showRecoveryHours(){
  const n=(data||[]).reduce((a,x)=>a+Number(x.minutes||0),0);
  el.textContent=Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' de remplacement validé à récupérer';
 }
+let paidHoursMonth=new Date().toISOString().slice(0,7);
 async function renderPaidHours(){
  if(!['owner','admin'].includes(profile?.role))return;
  const box=$('paidHoursContent');box.textContent='Chargement…';
- const {data,error}=await sb.rpc('manager_paid_replacement_hours');
- if(error){box.textContent='Impossible de charger les heures : '+error.message;return}
- const groups=new Map();
- for(const r of data||[]){
-  const key=r.work_month;
-  if(!groups.has(key))groups.set(key,new Map());
-  const people=groups.get(key);
-  if(!people.has(r.employee_id))people.set(r.employee_id,{name:r.employee_name,minutes:0,details:[]});
-  const p=people.get(r.employee_id);p.minutes+=r.minutes;p.details.push(r);
- }
+ const [paid,recovery,comp]=await Promise.all([sb.rpc('manager_paid_replacement_hours'),sb.rpc('replacement_recovery_hours'),sb.from('saturday_cover_compensation').select('cover_id,volunteer_id,mode')]);
+ if(paid.error){box.textContent='Erreur : '+paid.error.message;return}
  const hm=n=>Math.floor(n/60)+' h '+String(n%60).padStart(2,'0');
- box.innerHTML=[...groups.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([month,people])=>{
-  const title=new Date(month+'T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-  const sum=[...people.values()].reduce((n,p)=>n+p.minutes,0);
-  return '<div class="item"><h3>'+esc(title)+' — '+hm(sum)+'</h3>'+
-   [...people.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>
-    '<details><summary><strong>'+esc(p.name)+'</strong> : '+hm(p.minutes)+'</summary>'+
-    p.details.map(d=>'<div>'+fmt(d.work_date)+' · '+shortTime(d.start_time)+'–'+shortTime(d.end_time)+' · '+hm(d.minutes)+'</div>').join('')+'</details>'
-   ).join('')+'</div>';
- }).join('')||'<p class="muted">Aucune heure de remplacement rémunéré validée pour le moment.</p>';
+ const rows=(paid.data||[]).filter(x=>x.work_date.slice(0,7)===paidHoursMonth);
+ const weekStart=date=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()-(d.getDay()+6)%7);return d.toISOString().slice(0,10)};
+ const groups=new Map();
+ for(const r of rows){const wk=weekStart(r.work_date),key=r.employee_id+'|'+wk;if(!groups.has(key))groups.set(key,{name:r.employee_name,week:wk,minutes:0,rows:[]});const g=groups.get(key);g.minutes+=r.minutes;g.rows.push(r)}
+ const nav=document.createElement('div');nav.className='row';
+ const prev=document.createElement('button');prev.textContent='❮';prev.className='secondary';
+ const next=document.createElement('button');next.textContent='❯';next.className='secondary';
+ const month=document.createElement('input');month.type='month';month.value=paidHoursMonth;month.style.maxWidth='180px';
+ const move=n=>{const [y,m]=paidHoursMonth.split('-').map(Number),d=new Date(y,m-1+n,1);paidHoursMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');renderPaidHours()};
+ prev.onclick=()=>move(-1);next.onclick=()=>move(1);month.onchange=()=>{if(month.value){paidHoursMonth=month.value;renderPaidHours()}};
+ nav.append(prev,month,next);box.replaceChildren(nav);
+ const total=document.createElement('h3');total.textContent='Heures à payer · '+new Date(paidHoursMonth+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'})+' : '+hm(rows.reduce((n,r)=>n+r.minutes,0));box.appendChild(total);
+ const hint=document.createElement('p');hint.className='hint';hint.textContent='Heures exactes de remplacement validées, regroupées par semaine du lundi au dimanche. Attention : les seuils légaux d’heures supplémentaires dépendent du contrat et de toutes les heures réellement travaillées ; les majorations ne sont pas calculées ici.';box.appendChild(hint);
+ if(!groups.size){const empty=document.createElement('p');empty.textContent='Aucune heure rémunérée validée sur ce mois.';box.appendChild(empty)}
+ for(const g of [...groups.values()].sort((a,b)=>b.week.localeCompare(a.week)||a.name.localeCompare(b.name))){
+  const details=document.createElement('details');details.className='item';const summary=document.createElement('summary');summary.textContent=g.name+' · semaine du '+fmt(g.week)+' · '+hm(g.minutes);details.appendChild(summary);
+  for(const r of g.rows){const line=document.createElement('p');line.textContent=fmt(r.work_date)+' · '+shortTime(r.start_time)+'–'+shortTime(r.end_time)+' · '+hm(r.minutes);details.appendChild(line)}box.appendChild(details)
+ }
+ const heading=document.createElement('h3');heading.textContent='Heures à récupérer par salarié';box.appendChild(heading);
+ if(recovery.error){const err=document.createElement('p');err.textContent=recovery.error.message;box.appendChild(err)}
+ else for(const p of recovery.data||[]){const line=document.createElement('p');line.textContent=p.employee_name+' : '+hm(Number(p.minutes));box.appendChild(line)}
+ if(!comp.error)for(const c of comp.data||[]){
+  const cover=satCovers.find(x=>x.id===c.cover_id);if(!cover||cover.status!=='approved')continue;
+  const line=document.createElement('div');line.className='item';line.textContent=nm(c.volunteer_id)+' · '+fmt(cover.saturday_date)+' · '+shortTime(cover.start_time)+'–'+shortTime(cover.end_time)+' · '+(c.mode==='paid'?'À payer':'À récupérer')+' ';
+  const btn=document.createElement('button');btn.textContent=c.mode==='paid'?'Transformer en récupération':'Transformer en rémunération';btn.onclick=async()=>{btn.disabled=true;const {error}=await sb.rpc('manager_set_saturday_compensation',{p_cover_id:c.cover_id,p_mode:c.mode==='paid'?'recovery':'paid'});if(error)notice(error.message,true);else{notice('Compensation mise à jour.');await renderPaidHours();await showRecoveryHours()}};line.appendChild(btn);box.appendChild(line)
+ }
 }
 async function renderAdmin() {
   const { data: bs } = await sb
@@ -774,9 +784,22 @@ function saturdaySlotMenu(cell,date){
  cell.appendChild(menu);
 }
 window.actSaturdayCover=async(id,action)=>{
- const {error}=await sb.rpc('act_on_saturday_cover',{p_id:id,p_action:action});
- if(error)msgError(error);else{notice('Demande mise à jour.');await renderSaturdays();renderCalendar()}
+ if(action==='volunteer'){
+  const target=document.querySelector('[data-cover-id="'+id+'"]');
+  const menu=document.createElement('div');menu.style.cssText='background:white;color:#222;padding:8px;border:1px solid #bbb;border-radius:8px;margin-top:5px';
+  const select=document.createElement('select');select.innerHTML='<option value="recovery">Ajouter les heures à récupérer</option><option value="paid">Ajouter les heures à payer</option>';menu.appendChild(select);
+  const btn=document.createElement('button');btn.textContent='Confirmer';btn.onclick=async e=>{e.stopPropagation();btn.disabled=true;await submitSaturdayCoverAction(id,action,select.value)};menu.appendChild(btn);
+  const cancel=document.createElement('button');cancel.textContent='Annuler';cancel.onclick=e=>{e.stopPropagation();menu.remove()};menu.appendChild(cancel);
+  if(target){target.querySelector('.sat-cover-choice')?.remove();menu.className='sat-cover-choice';target.appendChild(menu)}
+  else {$('satRequests').prepend(menu)}
+  return;
+ }
+ await submitSaturdayCoverAction(id,action,null);
 };
+async function submitSaturdayCoverAction(id,action,mode){
+ const {error}=await sb.rpc('act_on_saturday_cover',{p_id:id,p_action:action,p_mode:mode});
+ if(error)msgError(error);else{notice('Demande mise à jour.');await renderSaturdays();await showRecoveryHours();renderCalendar()}
+}
 $('satMode').onchange=()=>show('satExchangeWrap',$('satMode').value==='exchange');
 $('satSend').onclick=async()=>{
  const date=$('satDate').value,recipient=$('satRecipient').value,mode=$('satMode').value,exchange=mode==='exchange'?$('satExchange').value:null;
@@ -1014,6 +1037,7 @@ for(const cover of (typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.sat
   if(cover.status==='pending_manager'&&['owner','admin'].includes(profile?.role)){const reject=document.createElement('button');reject.type='button';reject.textContent='Refuser';reject.onclick=e=>{e.stopPropagation();window.actSaturdayCover(cover.id,'reject')};actions.appendChild(reject)}
   event.appendChild(actions);
  }
+ event.dataset.coverId=cover.id;
  cell.appendChild(event);
 }}
 grid.appendChild(cell);
