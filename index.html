@@ -84,6 +84,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .schedule-alert{grid-column:1/-1;padding:15px;border-radius:10px;background:#fff4e6;color:#704a14}.schedule-empty{font-size:10px;color:#64748b;margin-top:10px}
 .staffing-periods{font-size:11px;font-weight:750;line-height:1.5;margin-top:7px;overflow-wrap:anywhere}
 .calendar-saturday-hours{font-size:10px;line-height:1.35;font-weight:700;color:#475569;margin:5px 0}
+.staffing-warning{color:#b91c1c;font-weight:850;font-size:12px;line-height:1.35;margin-top:3px}
 </style>
 </head>
 <body>
@@ -790,7 +791,7 @@ const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padSta
 if(sunday){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title='Pharmacie fermée le dimanche'}else if(holiday){cell.title='Jour férié — fermeture à confirmer : '+holiday}
 if(holiday){const flag=document.createElement('div');flag.className='calendar-holiday';flag.textContent='⚑ '+holiday;cell.appendChild(flag)}
 if(vacation){const tag=document.createElement('div');tag.className='calendar-school';tag.textContent=vacation;cell.appendChild(tag)}
-if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const checks=[['10 h','10:00'],['12 h','12:00'],['14 h 30','14:30'],['17 h','17:00']];const badge=document.createElement('div');badge.className='staffing-periods';badge.setAttribute('aria-label','Effectif restant par heure');badge.textContent=checks.map(([label,clock])=>{const count=staffingByMoment(date,clock);return label+' : '+(count===null?'?':count)}).join(' · ');cell.appendChild(badge)}};
+if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const checks=[['10 h','10:00'],['12 h','12:00'],['14 h 30','14:30'],['17 h','17:00']];const badge=document.createElement('div');badge.className='staffing-periods';badge.setAttribute('aria-label','Effectif restant par heure');for(const [label,clock] of checks){const count=staffingByMoment(date,clock);if(count!==0&&count!==1)continue;const warning=document.createElement('div');warning.className='staffing-warning';warning.textContent=label+' : '+count+' personne'+(count===1?'':'s')+' restante'+(count===1?'':'s');badge.appendChild(warning)}if(badge.childElementCount)cell.appendChild(badge)}};
 
 if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
