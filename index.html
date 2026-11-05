@@ -335,7 +335,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
               <button onclick="decide('${r.id}','approved')">Valider définitivement le congé</button>
             ` : `
               <button class="secondary"
-                onclick="confirmReplacement('${r.id}')">
+                onclick="confirmReplacement('${r.id}','${remplacement.replacement_user_id}')">
                 Confirmer ce remplaçant
               </button>
             `}
@@ -414,9 +414,10 @@ window.setReplacementRequirement = async (id, required) => {
   await refresh();
 };
 window.approveWithoutReplacement=async id=>{const {error}=await sb.from('leave_requests').update({replacement_required:false,status:'approved',decided_by:user.id,decided_at:new Date().toISOString()}).eq('id',id).eq('status','pending');if(error)notice(error.message,true);else{notice('Congé validé sans remplacement.');await refresh()}};
-window.confirmReplacement = async (id) => {
+window.confirmReplacement = async (id, replacementUserId) => {
   const { error } = await sb.rpc('confirm_replacement', {
-    p_leave_id: id
+    p_leave_id: id,
+    p_replacement_user_id: replacementUserId
   });
 
   if (error) {
