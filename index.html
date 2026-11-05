@@ -615,16 +615,9 @@ async function renderRecovery(){
  const version=scheduleCurrent(user.id,date),works=version&&scheduleSlots.some(s=>s.version_id===version.id&&s.weekday===wd);
  const leave=scheduleLeaves.some(x=>x.user_id===user.id&&x.start_date<=date&&x.end_date>=date);
  const already=recs.some(x=>x.user_id===user.id&&x.recovery_date===date&&x.status!=='rejected');
- const others=team.filter(p=>p.id!==user.id).filter(p=>{
-  const v=scheduleCurrent(p.id,date);if(!v)return false;
-  const slots=scheduleSlots.filter(x=>x.version_id===v.id&&Number(x.weekday)===wd);
-  const covered=(from,to)=>slots.some(x=>String(x.start_time).slice(0,5)<=from&&String(x.end_time).slice(0,5)>=to);
-  const allDay=covered('09:00','12:30')&&covered('14:00','19:00');
-  const anissa=String(p.full_name||'').toLowerCase().includes('anissa')&&slots.length>0;
-  return (allDay||anissa)&&!scheduleLeaves.some(x=>x.user_id===p.id&&x.start_date<=date&&x.end_date>=date);
- }).length;
- const recommended=works&&others>=2&&!leave&&!already;
- const label=leave?'Congé déjà posé':already?'Déjà demandé':!works?'Repos habituel':recommended?'✓ Possible · '+others+' collègues':'⚠ À confirmer · '+others+' collègues';
+ const critical=staffingCriticalPeriods(date);
+ const recommended=works&&!critical.length&&!leave&&!already;
+ const label=leave?'Congé déjà posé':already?'Déjà demandé':!works?'Repos habituel':recommended?'✓ Possible · couverture habituelle suffisante':'⚠ À confirmer · effectif réduit sur certaines plages';
  const cl=leave||already?'busy':!works?'off':recommended?'':'busy';
  html+='<button type="button" class="'+cl+'" data-rec="'+date+'" style="'+(recommended?'background:#c5f1d6;color:#13532c;':'')+'">'+n+'<small style="display:block">'+label+'</small></button>';
  }
