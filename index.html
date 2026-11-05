@@ -332,6 +332,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
             </p>
             ${remplacement.confirmed_at ? `
               <p style="color:green"><strong>Remplaçant confirmé</strong></p>
+              <button onclick="decide('${r.id}','approved')">Valider définitivement le congé</button>
             ` : `
               <button class="secondary"
                 onclick="confirmReplacement('${r.id}')">
