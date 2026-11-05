@@ -147,7 +147,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <nav class="nav-groups" aria-label="Navigation principale">
 <div class="nav-group"><div class="nav-title">📅 Congés et remplacements</div><div class="tabs"><button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="replacement">Je souhaite remplacer <span id="replacementCount" class="nav-count">0</span></button></div></div>
 <div class="nav-group"><div class="nav-title">🗓️ Organisation des samedis</div><div class="tabs"><button data-tab="saturdays">Gestion des samedis</button></div></div>
-<div class="nav-group"><div class="nav-title">⚙️ Mon espace et gestion</div><div class="tabs"><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="messages">Messagerie</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button></div></div>
+<div class="nav-group"><div class="nav-title">⚙️ Mon espace et gestion</div><div class="tabs"><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="messages">Messagerie</button><button data-tab="recovery" id="recoveryManagerTab" class="hidden">Calendrier récupérations</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button></div></div>
 </nav>
 <section id="calendarSection" class="card">
   <div class="row">
@@ -225,10 +225,10 @@ $('logout').onclick=async()=>{await sb.auth.signOut();user=null;profile=null;sho
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
-show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
+show('adminTab',p.role==='owner'||p.role==='admin');show('recoveryManagerTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function loadApprovedAbsences(){const {data,error}=await sb.rpc('list_approved_recovery_absences');if(error){window.approvedAbsences=null;notice('Impossible de charger les récupérations validées : '+error.message,true);return}window.approvedAbsences=(data||[]).map(x=>({user_id:x.user_id,date:x.absence_date,start:x.start_time,end:x.end_time}))}
 async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences()]);renderCalendar();if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des jauges verticales…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='recovery'&&!['owner','admin'].includes(profile?.role))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des jauges verticales…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -736,10 +736,11 @@ $('clearRanges').onclick=()=>{leaveRanges=[];pendingRangeStart=null;rangeMode=fa
 updateRangeSummary();
 let calendarDate = new Date();
 
+function saturdayStaffOverrides(date){const day=new Date(date+'T12:00:00').getDay();if(day!==6)return [];const openAfternoon=((Math.round((new Date(date+'T12:00:00')-new Date('2026-11-07T12:00:00'))/604800000)%2)+2)%2===0;return (schedulePeople||[]).flatMap(p=>{const n=String(p.full_name||'').toLowerCase();if(n.includes('essaidi')||n.includes('redouane'))return [{name:p.full_name,start:'09:00',end:'12:00'}];if(n.includes('mohamed'))return [{name:p.full_name,start:'09:00',end:'12:30'},...(openAfternoon?[{name:p.full_name,start:'14:00',end:'19:00'}]:[])];return []})}
 function scheduleBars(date){
  if(typeof schedulePeople==='undefined'||typeof scheduleVersions==='undefined'||typeof scheduleSlots==='undefined')return [];
  const weekday=new Date(date+'T12:00:00').getDay();const index=weekday===0?7:weekday;
- return (schedulePeople||[]).flatMap(p=>{const v=scheduleCurrent(p.id,date);if(!v)return[];return scheduleSlots.filter(x=>x.version_id===v.id&&Number(x.weekday)===index).map(x=>({name:p.full_name,start:String(x.start_time).slice(0,5),end:String(x.end_time).slice(0,5)}))});
+ return [...(schedulePeople||[]).flatMap(p=>{const v=scheduleCurrent(p.id,date);if(!v)return[];return scheduleSlots.filter(x=>x.version_id===v.id&&Number(x.weekday)===index).map(x=>({name:p.full_name,start:String(x.start_time).slice(0,5),end:String(x.end_time).slice(0,5)}))}).filter(x=>!(index===6&&/essaidi|redouane|mohamed/i.test(x.name))),...saturdayStaffOverrides(date)];
 }
 function remainingStaff(date){
  if(!schedulePeople.length||!scheduleVersions.length||!Array.isArray(window.approvedAbsences))return null;
