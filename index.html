@@ -20,7 +20,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;p
 #notice{padding:12px;border-radius:10px;background:#e6f3eb;color:#17563d;margin:12px 0;display:none}#notice.error{background:#fae9e9;color:#8a2929}
 small.privacy{display:block;background:#f5f1e8;padding:10px;border-radius:9px;color:#725521;margin-top:8px}
 footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-size:12px}
-@media(max-width:600px){header{padding:20px 17px}main{margin-top:12px}.card{padding:15px}table{font-size:12px}th,td{padding:7px}}
+ .schedule-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;margin-top:10px;font-size:13px}.schedule-days>div{padding:8px;background:#f3f6f4;border-radius:8px} @media(max-width:600px){header{padding:20px 17px}main{margin-top:12px}.card{padding:15px}table{font-size:12px}th,td{padding:7px}}
 
 #calendarGrid {
   display: grid;
@@ -95,7 +95,7 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
   </div>
 </div>
 <div class="tabs">
-<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
+<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
 </div>
 <section id="calendarSection" class="card">
   <div class="row">
@@ -115,7 +115,7 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 <div id="recoveryFields"><label>Dates souhaitées de récupération</label><input type="date" id="recoveryDate"><p class="hint">La date proposée devra être approuvée par Ibrahim.</p></div>
 <small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
 <div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
-<section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
+<section id="schedules" class="card hidden"><h2>Horaires habituels</h2><p class="muted">Semaine type de chaque salarié. Les horaires du samedi alterné se gèrent séparément. Les horaires passés sont conservés.</p><div id="scheduleList">Chargement…</div><div id="scheduleEditor" class="hidden"><h3>Modifier les horaires</h3><div class="grid"><div><label>Salarié</label><select id="scheduleEmployee"></select></div><div><label>À partir du</label><input id="scheduleEffective" type="date"></div></div><p class="hint">Un créneau par ligne, au format Jour;HH:MM;HH:MM. Jours : 1=lundi, 2=mardi, …, 7=dimanche. Une journée sans créneau est un repos. Les interruptions ne sont pas comptées ; pour une pause rémunérée, saisissez une plage continue.</p><label>Créneaux</label><textarea id="scheduleSlots" rows="9" placeholder="1;09:00;12:30&#10;1;14:00;19:00"></textarea><div class="actions"><button id="scheduleSave">Enregistrer une nouvelle version</button></div></div></section><section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
 <section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
@@ -168,9 +168,9 @@ $('logout').onclick=async()=>{await sb.auth.signOut();user=null;profile=null;sho
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
-show('adminTab',p.role==='owner'||p.role==='admin');await refresh()}
+show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function refresh(){await Promise.all([renderRequests(),renderBalances()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;if(tab==='schedules')renderSchedules()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -466,6 +466,70 @@ $('savePassword').onclick = async () => {
   } finally {
     btn.disabled = false;
   }
+};
+
+
+const scheduleDays=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+let schedulePeople=[],scheduleVersions=[],scheduleSlots=[];
+function timeMin(t){const p=String(t).slice(0,5).split(':').map(Number);return p[0]*60+p[1]}
+function displayMinutes(n){return Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')}
+function scheduleCurrent(id,date){
+ const versions=scheduleVersions.filter(v=>v.employee_id===id&&v.effective_from<=date).sort((a,b)=>b.effective_from.localeCompare(a.effective_from)||b.created_at.localeCompare(a.created_at));
+ return versions[0]||null;
+}
+function scheduleEditorLoad(){
+ const id=$('scheduleEmployee').value,v=scheduleCurrent(id,$('scheduleEffective').value);
+ const slots=v?scheduleSlots.filter(s=>s.version_id===v.id).sort((a,b)=>a.weekday-b.weekday||a.start_time.localeCompare(b.start_time)):[];
+ $('scheduleSlots').value=slots.map(s=>s.weekday+';'+s.start_time.slice(0,5)+';'+s.end_time.slice(0,5)).join('\n');
+}
+async function renderSchedules(){
+ if(!user)return;
+ const [p,v,s]=await Promise.all([
+ sb.from('profiles').select('id,full_name').order('full_name'),
+ sb.from('work_schedule_versions').select('id,employee_id,effective_from,created_at'),
+ sb.from('work_schedule_slots').select('version_id,weekday,start_time,end_time')
+ ]);
+ if(p.error||v.error||s.error){$('scheduleList').textContent='Impossible de charger les horaires : '+(p.error||v.error||s.error).message;return}
+ schedulePeople=p.data||[];scheduleVersions=v.data||[];scheduleSlots=s.data||[];
+ const today=new Date().toLocaleDateString('en-CA');
+ $('scheduleList').innerHTML=schedulePeople.map(person=>{
+  const version=scheduleCurrent(person.id,today);
+  if(!version)return '<div class="item"><strong>'+esc(person.full_name)+'</strong><p class="muted">Horaires non renseignés</p></div>';
+  const slots=scheduleSlots.filter(s=>s.version_id===version.id);
+  let total=0;
+  const days=scheduleDays.map((day,i)=>{
+   const periods=slots.filter(s=>s.weekday===i+1).sort((a,b)=>a.start_time.localeCompare(b.start_time));
+   periods.forEach(s=>total+=timeMin(s.end_time)-timeMin(s.start_time));
+   return '<div><strong>'+day+'</strong> : '+(periods.length?periods.map(s=>esc(s.start_time.slice(0,5))+'–'+esc(s.end_time.slice(0,5))).join(' / '):'Repos')+'</div>';
+  }).join('');
+  return '<div class="item"><div class="row"><strong>'+esc(person.full_name)+'</strong><span class="badge">'+displayMinutes(total)+'</span></div><p class="hint">Applicable depuis le '+esc(version.effective_from)+'</p><div class="schedule-days">'+days+'</div></div>';
+ }).join('');
+ show('scheduleEditor',profile?.role==='owner');
+ if(profile?.role==='owner'){
+  const selected=$('scheduleEmployee').value;
+  $('scheduleEmployee').innerHTML=schedulePeople.map(p=>'<option value="'+p.id+'">'+esc(p.full_name)+'</option>').join('');
+  if(schedulePeople.some(p=>p.id===selected))$('scheduleEmployee').value=selected;
+  if(!$('scheduleEffective').value)$('scheduleEffective').value=today;
+  scheduleEditorLoad();
+ }
+}
+$('scheduleEmployee').onchange=scheduleEditorLoad;
+$('scheduleEffective').onchange=()=>{if($('scheduleEffective').value)scheduleEditorLoad()};
+$('scheduleSave').onclick=async()=>{
+ if(profile?.role!=='owner')return;
+ const lines=$('scheduleSlots').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean),slots=[];
+ for(const line of lines){
+  const match=line.match(/^([1-7]);([01]\d|2[0-3]):([0-5]\d);([01]\d|2[0-3]):([0-5]\d)$/);
+  if(!match){notice('Créneau incorrect : '+line,true);return}
+  slots.push({weekday:Number(match[1]),start:match[2]+':'+match[3],end:match[4]+':'+match[5]});
+ }
+ const btn=$('scheduleSave');btn.disabled=true;
+ try{
+  const {error}=await sb.rpc('save_work_schedule',{p_employee_id:$('scheduleEmployee').value,p_effective_from:$('scheduleEffective').value,p_slots:slots});
+  if(error)throw error;
+  await renderSchedules();notice('Nouvelle version des horaires enregistrée.');
+ }catch(e){notice('Enregistrement impossible : '+e.message,true)}
+ finally{btn.disabled=false}
 };
 
 let calendarDate = new Date();
