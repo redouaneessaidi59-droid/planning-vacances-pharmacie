@@ -872,7 +872,7 @@ if(tab==='schedules'){
   const wrap=document.createElement('div');wrap.className='schedule-timeline';wrap.setAttribute('aria-label','Jauges verticales des horaires du '+date);
   const groups=new Map();
   for(const slot of slots){if(!groups.has(slot.name))groups.set(slot.name,[]);groups.get(slot.name).push(slot)}
-  for(const [name,periods] of groups){
+  for(const [name,periods] of [...groups.entries()].sort((a,b)=>{const minutes=ps=>ps.reduce((sum,p)=>sum+Math.max(0,timeMin(p.end)-timeMin(p.start)),0);return minutes(b[1])-minutes(a[1])||a[0].localeCompare(b[0],'fr')})){
    const lane=document.createElement('div');lane.className='schedule-lane';lane.title=name+' : '+periods.map(p=>p.start+'–'+p.end).join(' / ');
    const label=document.createElement('span');label.className='schedule-lane-label';label.textContent=name.split(' ')[0];lane.appendChild(label);
    const axis=document.createElement('div');axis.className='schedule-axis';for(const minute of [...new Set(periods.flatMap(p=>[timeMin(p.start),timeMin(p.end)]))].sort((a,b)=>a-b)){if(minute<540||minute>1170)continue;const tick=document.createElement('span');tick.className='schedule-axis-tick';tick.style.bottom=((minute-540)/630*100)+'%';tick.textContent=staffingClock(minute);axis.appendChild(tick)}lane.appendChild(axis);const track=document.createElement('div');track.className='schedule-track';
