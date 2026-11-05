@@ -527,6 +527,11 @@ $('scheduleSave').onclick=async()=>{
 
 let recMonth=new Date(), team=[], sats=[], swaps=[], recs=[], scheduleLeaves=[];
 function nm(id){return team.find(p=>p.id===id)?.full_name||'Salarié'}
+const employeePalette=['#dceafe','#ffe4d6','#e9dcfa','#fce7f3','#fef3c7','#ccfbf1','#e0e7ff','#dcfce7'];
+const employeeNames=['Redouane','Ibrahim','Anissa','Sylvain','Laurence','Séverine','Fanaella','Mohamed'];
+function employeeColor(name){const n=String(name||'').toLocaleLowerCase('fr').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');let i=employeeNames.findIndex(x=>x.toLocaleLowerCase('fr').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'')===n);if(i<0){i=0;for(const c of n)i=(i*31+c.charCodeAt(0))%employeePalette.length}return employeePalette[i]}
+function employeeTag(name,label){return '<span style="display:inline-block;padding:3px 6px;border-radius:5px;background:'+employeeColor(name)+';color:#172b32;font-weight:600">'+esc(label||name||'Salarié')+'</span>'}
+
 function shortTime(t){return String(t||'').slice(0,5)}
 function msgError(e){notice(e?.message||'Erreur, veuillez réessayer.',true)}
 async function getTeam(){const {data,error}=await sb.from('profiles').select('id,full_name,role').order('full_name');if(error)throw error;team=data||[]}
@@ -589,8 +594,8 @@ async function renderSaturdays(){
  await getTeam();
  const [a,b]=await Promise.all([sb.from('saturday_assignments').select('*').order('saturday_date'),sb.from('saturday_swaps').select('*').order('created_at',{ascending:false})]);
  if(a.error||b.error)throw a.error||b.error;
- sats=a.data||[];swaps=b.data||[];
- $('satList').innerHTML=sats.map(x=>'<div class="item"><strong>'+fmt(x.saturday_date)+'</strong> — '+esc(nm(x.user_id))+'</div>').join('');
+ sats=a.data||[];swaps=b.data||[];if(typeof renderCalendar==='function')renderCalendar();
+ $('satList').innerHTML=sats.map(x=>'<div class="item"><strong>'+fmt(x.saturday_date)+'</strong> — Après-midi (heures supplémentaires) : '+employeeTag(nm(x.user_id))+'</div>').join('');
  $('satDate').innerHTML=sats.filter(x=>x.user_id===user.id).map(x=>'<option value="'+x.saturday_date+'">'+fmt(x.saturday_date)+'</option>').join('');
  $('satRecipient').innerHTML=team.filter(x=>x.id!==user.id).map(x=>'<option value="'+x.id+'">'+esc(x.full_name)+'</option>').join('');
  $('satExchange').innerHTML=sats.filter(x=>x.user_id!==user.id).map(x=>'<option value="'+x.saturday_date+'">'+fmt(x.saturday_date)+' — '+esc(nm(x.user_id))+'</option>').join('');
@@ -696,10 +701,17 @@ const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padSta
       ? 'calendar-approved'
       : 'calendar-pending');
 
-  event.textContent = leave.profiles?.full_name || 'Salarié';
-  cell.appendChild(event);
+  const absentName=leave.profiles?.full_name||'Salarié';
+  event.style.background=employeeColor(absentName);
+  event.style.color='#172b32';
+  event.style.borderLeft=leave.status==='approved'?'4px solid #236c5b':'4px dashed #a66b12';
+  event.textContent=absentName+(leave.status==='approved'?' · Congé validé':' · En attente');
+  const replacement=leave.replacements?.find(x=>x.profiles?.full_name);
+  if(replacement){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='#172b32';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
+  else cell.appendChild(event);
 });
 
+if(new Date(year,month,day).getDay()===6){const assignment=(typeof sats!=='undefined'?sats:[]).find(x=>x.saturday_date===date);if(assignment){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='#172b32';sat.textContent='Après-midi · '+person;cell.appendChild(sat)}}
 grid.appendChild(cell);
   }
 }
