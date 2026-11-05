@@ -714,7 +714,7 @@ function scheduleBars(date){
  return (schedulePeople||[]).flatMap(p=>{const v=scheduleCurrent(p.id,date);if(!v)return[];return scheduleSlots.filter(x=>x.version_id===v.id&&Number(x.weekday)===index).map(x=>({name:p.full_name,start:String(x.start_time).slice(0,5),end:String(x.end_time).slice(0,5)}))});
 }
 function remainingStaff(date){
- if(!schedulePeople.length||!scheduleVersions.length)return null;
+ if(!schedulePeople.length||!scheduleVersions.length||!Array.isArray(window.approvedAbsences))return null;
  const weekday=new Date(date+'T12:00:00').getDay();if(weekday===0)return 0;
  const day=weekday===0?7:weekday;
  const leaves=window.calendarLeaves||[];
@@ -738,7 +738,7 @@ function staffingByMoment(date,clock){
  }).length;
 }
 function staffingCriticalPeriods(date){
- if(!schedulePeople.length||!scheduleVersions.length)return [];
+ if(!schedulePeople.length||!scheduleVersions.length||!Array.isArray(window.approvedAbsences))return [];
  const weekday=new Date(date+'T12:00:00').getDay();
  if(weekday===0)return [];
  const opening=weekday===6?[[540,750]]:[[540,1170]];
@@ -747,6 +747,9 @@ function staffingCriticalPeriods(date){
   if(weeks%2===0)opening.push([840,1140]);
  }
  const boundaries=new Set(opening.flat());
+ for(const absence of (window.approvedAbsences||[]).filter(x=>x.date===date)){
+  for(const t of [absence.start,absence.end])if(t){const m=timeMin(t);for(const [open,close] of opening)if(m>open&&m<close)boundaries.add(m)}
+ }
  for(const person of schedulePeople){
   const version=scheduleCurrent(person.id,date);
   if(!version)continue;
