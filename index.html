@@ -80,6 +80,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .nav-group .tabs button,.card button{transition:transform .16s ease,background-color .16s ease}.nav-group .tabs button:active,.card button:active{transform:scale(.97)}@media(prefers-reduced-motion:reduce){.nav-group .tabs button,.card button{transition:none}}
 /* Navigation douce 2026 */
 .nav-group .tabs button,.card button{transition:transform .16s ease,background-color .16s ease}.nav-group .tabs button:active,.card button:active{transform:scale(.97)}@media(prefers-reduced-motion:reduce){.nav-group .tabs button,.card button{transition:none}}
+.schedule-timeline{display:flex;gap:4px;overflow-x:auto;margin-top:8px;padding:4px 0 8px;min-height:154px}.schedule-lane{min-width:29px;flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}.schedule-lane-label{font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.schedule-track{position:relative;height:124px;width:14px;border:1px solid #d7e0db;background:repeating-linear-gradient(to bottom,#f2f5f3 0,#f2f5f3 23%,#dce4df 24%,#f2f5f3 25%);border-radius:5px}.schedule-segment{position:absolute;left:0;width:100%;border-radius:3px;min-height:2px}@media(max-width:600px){.schedule-lane{min-width:25px}.schedule-lane-label{font-size:8px}}
 </style>
 </head>
 <body>
@@ -796,7 +797,26 @@ if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave
   else cell.appendChild(event);
 });
 
-if(tab==='schedules'){for(const slot of scheduleBars(date)){const bar=document.createElement('div');bar.className='calendar-event';bar.style.background=employeeColor(slot.name);bar.style.color='white';bar.textContent=slot.name+' · '+slot.start+'–'+slot.end;cell.appendChild(bar)}}
+if(tab==='schedules'){
+ const slots=scheduleBars(date);
+ if(slots.length){
+  const wrap=document.createElement('div');wrap.className='schedule-timeline';wrap.setAttribute('aria-label','Horaires du '+date);
+  const groups=new Map();
+  for(const slot of slots){if(!groups.has(slot.name))groups.set(slot.name,[]);groups.get(slot.name).push(slot)}
+  for(const [name,periods] of groups){
+   const lane=document.createElement('div');lane.className='schedule-lane';lane.title=name+' : '+periods.map(p=>p.start+'–'+p.end).join(' / ');
+   const label=document.createElement('span');label.className='schedule-lane-label';label.textContent=name.split(' ')[0];lane.appendChild(label);
+   const track=document.createElement('div');track.className='schedule-track';
+   for(const p of periods){
+    const from=Math.max(540,Math.min(1170,timeMin(p.start))),to=Math.max(540,Math.min(1170,timeMin(p.end)));
+    if(to<=from)continue;
+    const segment=document.createElement('span');segment.className='schedule-segment';segment.style.top=((from-540)/630*100)+'%';segment.style.height=((to-from)/630*100)+'%';segment.style.background=employeeColor(name);segment.title=name+' · '+p.start+'–'+p.end;track.appendChild(segment);
+   }
+   lane.appendChild(track);wrap.appendChild(lane);
+  }
+  cell.appendChild(wrap);
+ }
+}
 if(new Date(year,month,day).getDay()===6){const assignment=(typeof sats!=='undefined'?sats:[]).find(x=>x.saturday_date===date);const planned={'2026-11-07':'Redouane','2026-11-21':'Anissa','2026-12-05':'Sylvain','2026-12-19':'Laurence'};if(assignment||planned[date]){const person=assignment?nm(assignment.user_id):planned[date];const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent='Après-midi · '+person+(assignment?'':' (prévu)');cell.appendChild(sat)}}
 grid.appendChild(cell);
   }
