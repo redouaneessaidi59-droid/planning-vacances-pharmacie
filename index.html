@@ -172,7 +172,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <section id="recovery" class="card hidden"><h2>Calendrier des récupérations</h2><p class="hint">Vert : récupération envisageable (au moins deux collègues prévus toute la journée). Gris : jour non travaillé. Orange : effectif insuffisant, demande exceptionnelle possible. Clique sur une date pour la choisir ; Ibrahim doit ensuite valider.</p><div class="grid"><div><label for="recEmployee">Calendrier du salarié</label><select id="recEmployee"></select></div></div><div class="row"><button id="recPrev">❮</button><h3 id="recTitle"></h3><button id="recNext">❯</button></div><div id="recCalendar" class="month-grid"></div><label>Date sélectionnée</label><input id="recDate" type="date"><label>Commentaire</label><input id="recNote"><button id="recSend">Demander une récupération</button><div id="recList"></div><div id="recAdmin"></div></section>
 <section id="saturdays" class="card hidden"><h2>Gestion des samedis</h2><p class="hint">Clique sur ta case du samedi dans le calendrier ci-dessus pour demander un remplaçant. Les collègues peuvent se proposer directement sur la case encadrée en rouge.</p><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
 <section id="messages" class="card hidden"><h2>Messagerie privée avec Ibrahim</h2><div id="messageThread"></div><div id="messageRecipientWrap" class="hidden"><label>Répondre à</label><select id="messageRecipient"></select></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
-<section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div><div class="item"><strong>Heures de remplacement à récupérer</strong><p id="myRecoveryHours">Chargement…</p></div></section>
+<section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
 <section id="paidHours" class="card hidden"><h2>Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
@@ -251,23 +251,23 @@ $('sendLeave').onclick=async()=>{const ranges=leaveRanges.length?leaveRanges:($(
 $('compMode').onchange=()=>show('recoveryFields',$('compMode').value==='recovery');
 $('sendReplacement').onclick=async()=>{const leaveId=$('replaceLeave').value,mode=$('compMode').value;if(!leaveId){notice("Aucune demande disponible pour un remplacement.",true);return}
 const wd=$('replacementWorkDate').value,ws=$('replacementWorkStart').value,we=$('replacementWorkEnd').value;if(!wd||!ws||!we||ws>=we){notice('Indique le jour et les heures de remplacement.',true);return}const {data:leave,error:le}=await sb.from('leave_requests').select('start_date,end_date').eq('id',leaveId).single();if(le||wd<leave.start_date||wd>leave.end_date){notice('Le remplacement doit avoir lieu pendant les congés.',true);return}const {error}=await sb.rpc('propose_replacement',{p_leave_id:leaveId,p_mode:mode,p_recovery_date:null});if(error)notice(error.message,true);else{const {error:se}=await sb.from('replacement_work_slots').insert({leave_id:leaveId,replacement_user_id:user.id,work_date:wd,start_time:ws,end_time:we});notice(se?'Proposition enregistrée, mais les heures n’ont pas pu être sauvegardées : '+se.message:'Proposition et horaires transmis. Compensation confidentielle.',!!se);await refresh()}}
-async function renderBalances(){const accrual=await sb.rpc('apply_monthly_leave_accrual');if(accrual.error){console.error('Acquisition mensuelle non appliquée',accrual.error);$('myBalances').textContent='Erreur de calcul des congés : '+accrual.error.message;return;}let {data,error}=await sb.from('balances').select('*').eq('user_id',user.id).single();$('myBalances').innerHTML=error?'<p class="muted">Compteurs non initialisés.</p>':`<div class="grid"><div class="item"><span class="muted">N-1 : ${data.leave_n1} jours</span><h2>N : ${data.leave_n} jours</h2><small>Total : ${data.leave_days} jours</small></div><div class="item"><span class="muted">Récupération disponible</span><h2>${data.recovery_days} jours</h2></div></div>`}
+async function renderBalances(){const accrual=await sb.rpc('apply_monthly_leave_accrual');if(accrual.error){console.error('Acquisition mensuelle non appliquée',accrual.error);$('myBalances').textContent='Erreur de calcul des congés : '+accrual.error.message;return;}let {data,error}=await sb.from('balances').select('*').eq('user_id',user.id).single();$('myBalances').innerHTML=error?'<p class="muted">Compteurs non initialisés.</p>':`<div class="grid"><div class="item"><span class="muted">N-1 : ${data.leave_n1} jours</span><h2>N : ${data.leave_n} jours</h2><small>Total : ${data.leave_days} jours</small></div></div>`}
 
 async function showRecoveryHours(){
  const el=$('myRecoveryHours');if(!el)return;
  const {data,error}=await sb.rpc('replacement_recovery_hours',{p_employee_id:user.id});
  if(error){el.textContent='Heures de récupération indisponibles';return}
  const n=(data||[]).reduce((a,x)=>a+Number(x.minutes||0),0);
- el.textContent=Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' de remplacement validé à récupérer';
+ el.textContent=Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' disponibles';
 }
 let paidHoursMonth=new Date().toISOString().slice(0,7);
 async function renderPaidHours(){
  if(!['owner','admin'].includes(profile?.role))return;
  const box=$('paidHoursContent');box.textContent='Chargement…';
- const [paid,recovery,comp]=await Promise.all([sb.rpc('manager_paid_replacement_hours'),sb.rpc('replacement_recovery_hours'),sb.from('saturday_cover_compensation').select('cover_id,volunteer_id,mode')]);
+ const [paid,recovery,comp,transfers,sources]=await Promise.all([sb.rpc('manager_paid_replacement_hours'),sb.rpc('replacement_recovery_hours'),sb.from('saturday_cover_compensation').select('cover_id,volunteer_id,mode'),sb.rpc('manager_transferred_paid_hours'),sb.rpc('recovery_transfer_sources')]);
  if(paid.error){box.textContent='Erreur : '+paid.error.message;return}
  const hm=n=>Math.floor(n/60)+' h '+String(n%60).padStart(2,'0');
- const rows=(paid.data||[]).filter(x=>x.work_date.slice(0,7)===paidHoursMonth);
+ const rows=(paid.data||[]).filter(x=>x.work_date.slice(0,7)===paidHoursMonth);const transferredRows=(transfers.data||[]).filter(x=>x.work_date.slice(0,7)===paidHoursMonth);
  const weekStart=date=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()-(d.getDay()+6)%7);return d.toISOString().slice(0,10)};
  const groups=new Map();
  for(const r of rows){const wk=weekStart(r.work_date),key=r.employee_id+'|'+wk;if(!groups.has(key))groups.set(key,{name:r.employee_name,week:wk,minutes:0,rows:[]});const g=groups.get(key);g.minutes+=r.minutes;g.rows.push(r)}
@@ -279,12 +279,32 @@ async function renderPaidHours(){
  const move=n=>{const [y,m]=paidHoursMonth.split('-').map(Number),d=new Date(y,m-1+n,1);paidHoursMonth=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');renderPaidHours()};
  prev.onclick=()=>move(-1);next.onclick=()=>move(1);month.onchange=()=>{if(month.value){paidHoursMonth=month.value;renderPaidHours()}};
  nav.append(prev,month,next);box.replaceChildren(nav);
- const total=document.createElement('h3');total.textContent='Heures à payer · '+new Date(paidHoursMonth+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'})+' : '+hm(rows.reduce((n,r)=>n+r.minutes,0));box.appendChild(total);
+ const total=document.createElement('h3');total.textContent='Heures à payer · '+new Date(paidHoursMonth+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'})+' : '+hm(rows.reduce((n,r)=>n+r.minutes,0)+transferredRows.reduce((n,r)=>n+r.minutes,0));box.appendChild(total);
  const hint=document.createElement('p');hint.className='hint';hint.textContent='Heures exactes de remplacement validées, regroupées par semaine du lundi au dimanche. Attention : les seuils légaux d’heures supplémentaires dépendent du contrat et de toutes les heures réellement travaillées ; les majorations ne sont pas calculées ici.';box.appendChild(hint);
- if(!groups.size){const empty=document.createElement('p');empty.textContent='Aucune heure rémunérée validée sur ce mois.';box.appendChild(empty)}
+ if(!groups.size&&!transferredRows.length){const empty=document.createElement('p');empty.textContent='Aucune heure rémunérée validée sur ce mois.';box.appendChild(empty)}
  for(const g of [...groups.values()].sort((a,b)=>b.week.localeCompare(a.week)||a.name.localeCompare(b.name))){
   const details=document.createElement('details');details.className='item';const summary=document.createElement('summary');summary.textContent=g.name+' · semaine du '+fmt(g.week)+' · '+hm(g.weekTotal)+' sur la semaine ('+hm(g.minutes)+' dans ce mois)';details.appendChild(summary);
   for(const r of g.rows){const line=document.createElement('p');line.textContent=fmt(r.work_date)+' · '+shortTime(r.start_time)+'–'+shortTime(r.end_time)+' · '+hm(r.minutes);details.appendChild(line)}box.appendChild(details)
+ }
+ if(transfers.error){const err=document.createElement('p');err.textContent='Transferts indisponibles : '+transfers.error.message;box.appendChild(err)}
+ else for(const r of transferredRows){const line=document.createElement('p');line.textContent=r.employee_name+' · '+fmt(r.work_date)+' · '+hm(r.minutes)+' transférées en heures à payer';box.appendChild(line)}
+ const manageTitle=document.createElement('h3');manageTitle.textContent='Basculer des heures de récupération en heures à payer';box.appendChild(manageTitle);
+ const explain=document.createElement('p');explain.className='hint';explain.textContent='Direction uniquement · Sélectionne un remplacement validé, puis indique le total exact à payer sur ce remplacement. Le reste reste en récupération. Saisir 0 annule le transfert.';box.appendChild(explain);
+ if(sources.error){const err=document.createElement('p');err.textContent='Gestion indisponible : '+sources.error.message;box.appendChild(err)}
+ else if(!sources.data?.length){const empty=document.createElement('p');empty.textContent='Aucun remplacement validé en récupération pour le moment.';box.appendChild(empty)}
+ else {
+  const wrap=document.createElement('div');wrap.className='item';
+  const select=document.createElement('select');select.style.width='100%';
+  const options=sources.data.slice().sort((a,b)=>b.work_date.localeCompare(a.work_date));
+  for(const x of options){const o=document.createElement('option');o.value=x.source_type+'|'+x.source_id;o.textContent=x.employee_name+' · '+fmt(x.work_date)+' · '+(x.source_type==='saturday'?'Samedi':'Remplacement')+' · '+hm(x.total_minutes);select.appendChild(o)}
+  const info=document.createElement('p');info.className='hint';
+  const minutes=document.createElement('input');minutes.type='number';minutes.min='0';minutes.step='1';minutes.style.maxWidth='140px';
+  const label=document.createElement('label');label.textContent='Minutes à payer (précision à la minute)';label.appendChild(minutes);
+  const update=()=>{const x=options[select.selectedIndex];if(!x)return;minutes.max=String(x.total_minutes);minutes.value=String(x.paid_minutes);info.textContent='Total : '+hm(x.total_minutes)+' · À payer : '+hm(x.paid_minutes)+' · Restant à récupérer : '+hm(x.total_minutes-x.paid_minutes)};
+  select.onchange=update;update();
+  const button=document.createElement('button');button.textContent='Enregistrer le transfert';
+  button.onclick=async()=>{const x=options[select.selectedIndex],n=Number(minutes.value);if(!Number.isInteger(n)||n<0||n>x.total_minutes){notice('Indique un nombre de minutes compris entre 0 et '+x.total_minutes,true);return}if(!confirm('Confirmer : '+hm(n)+' à payer et '+hm(x.total_minutes-n)+' à récupérer ?'))return;button.disabled=true;const {error}=await sb.rpc('manager_transfer_recovery_to_paid',{p_source_type:x.source_type,p_source_id:x.source_id,p_minutes:n});if(error){notice(error.message,true);button.disabled=false}else{notice('Transfert enregistré.');await renderPaidHours();await showRecoveryHours()}};
+  wrap.append(select,info,label,button);box.appendChild(wrap);
  }
  const heading=document.createElement('h3');heading.textContent='Heures à récupérer par salarié';box.appendChild(heading);
  if(recovery.error){const err=document.createElement('p');err.textContent=recovery.error.message;box.appendChild(err)}
@@ -313,7 +333,7 @@ async function renderAdmin() {
             <input type="number" step=".5" id="n${b.user_id}" value="${b.leave_n}">
           </div>
           <div>
-            <label>Récupération (jours)</label>
+            <label>Ancien solde de récupération (jours) — conservé pour historique</label>
             <input type="number" step=".5" id="r${b.user_id}" value="${b.recovery_days}">
           </div>
         </div>
