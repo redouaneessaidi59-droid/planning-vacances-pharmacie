@@ -173,7 +173,7 @@ async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;i
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
 show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
-async function refresh(){await Promise.all([renderRequests(),renderBalances()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
+async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;show('calendarSection',['overview','request','availability','recovery','saturdays','schedules'].includes(tab));if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
@@ -589,6 +589,12 @@ window.decideRecovery=async(id,accept)=>{
  const {error}=await sb.from('recovery_requests').update({status:accept?'approved':'rejected',decided_by:user.id}).eq('id',id).eq('status','pending');
  if(error)msgError(error);else{notice('Décision enregistrée.');renderRecovery()}
 };
+async function loadSaturdayCalendar(){
+ const [people,assignments]=await Promise.all([sb.from('profiles').select('id,full_name,role'),sb.from('saturday_assignments').select('saturday_date,user_id').order('saturday_date')]);
+ if(people.error||assignments.error){console.warn('Chargement samedis :',people.error||assignments.error);return}
+ team=people.data||[];sats=assignments.data||[];
+ if(typeof renderCalendar==='function')renderCalendar();
+}
 async function renderSaturdays(){
  try{
  await getTeam();
