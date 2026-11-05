@@ -672,9 +672,9 @@ window.decideRecovery=async(id,accept)=>{
  if(error)msgError(error);else{notice('Décision enregistrée.');renderRecovery()}
 };
 async function loadSaturdayCalendar(){
- const [people,assignments]=await Promise.all([sb.from('profiles').select('id,full_name,role'),sb.from('saturday_assignments').select('saturday_date,user_id').order('saturday_date')]);
- if(people.error||assignments.error){console.warn('Chargement samedis :',people.error||assignments.error);return}
- team=people.data||[];sats=assignments.data||[];
+ const [people,assignments,covers]=await Promise.all([sb.from('profiles').select('id,full_name,role'),sb.from('saturday_assignments').select('saturday_date,user_id').order('saturday_date'),sb.from('saturday_cover_requests').select('*')]);
+ if(people.error||assignments.error||covers.error){console.warn('Chargement samedis :',people.error||assignments.error||covers.error);return}
+ team=people.data||[];sats=assignments.data||[];satCovers=covers.data||[];
  if(typeof renderCalendar==='function')renderCalendar();
 }
 async function renderSaturdays(){
@@ -746,7 +746,7 @@ $('satCoverSend').onclick=async()=>{
 };
 window.actSaturdayCover=async(id,action)=>{
  const {error}=await sb.rpc('act_on_saturday_cover',{p_id:id,p_action:action});
- if(error)msgError(error);else{notice('Demande mise à jour.');renderSaturdays()}
+ if(error)msgError(error);else{notice('Demande mise à jour.');await renderSaturdays();renderCalendar()}
 };
 
 $('satMode').onchange=()=>show('satExchangeWrap',$('satMode').value==='exchange');
@@ -953,7 +953,15 @@ if(tab==='schedules'){
   cell.appendChild(wrap);
  }else{const empty=document.createElement('div');empty.className='schedule-empty';empty.textContent='Aucun horaire renseigné';cell.appendChild(empty)}
 }
-if(new Date(year,month,day).getDay()===6){const anchor=new Date(2026,10,7,12),current=new Date(year,month,day,12);const weeks=Math.round((current-anchor)/604800000);const afternoon=weeks%2===0;const hours=document.createElement('div');hours.className='calendar-saturday-hours';hours.textContent=afternoon?'Ouvert 9 h–12 h 30 · 14 h–19 h':'Ouvert 9 h–12 h 30';cell.appendChild(hours);const assignments=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);for(const assignment of assignments){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent=(afternoon?'Après-midi · ':'Samedi · ')+person;cell.appendChild(sat)}}
+if(new Date(year,month,day).getDay()===6){const anchor=new Date(2026,10,7,12),current=new Date(year,month,day,12);const weeks=Math.round((current-anchor)/604800000);const afternoon=weeks%2===0;const hours=document.createElement('div');hours.className='calendar-saturday-hours';hours.textContent=afternoon?'Ouvert 9 h–12 h 30 · 14 h–19 h':'Ouvert 9 h–12 h 30';cell.appendChild(hours);const assignments=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);for(const assignment of assignments){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent=(afternoon?'Après-midi · ':'Samedi · ')+person;cell.appendChild(sat)}
+for(const cover of (typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.saturday_date===date&&['open','pending_manager','approved'].includes(x.status))){
+ const event=document.createElement('div');event.className='calendar-event';
+ const requester=nm(cover.requester_id),volunteer=cover.volunteer_id?nm(cover.volunteer_id):'';
+ event.style.background=cover.status==='approved'?employeeColor(volunteer):'#f3e8cb';event.style.color=cover.status==='approved'?'white':'#594317';
+ event.textContent=cover.status==='approved'?requester+' remplacé par '+volunteer+' · '+shortTime(cover.start_time)+'–'+shortTime(cover.end_time):requester+' · '+(cover.status==='open'?'Recherche remplaçant':'Remplaçant proposé, validation en attente')+' · '+shortTime(cover.start_time)+'–'+shortTime(cover.end_time);
+ if(tab==='overview'&&cover.status!=='approved')continue;
+ cell.appendChild(event);
+}}
 grid.appendChild(cell);
   }
 }
