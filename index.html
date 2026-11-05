@@ -659,7 +659,7 @@ async function renderSaturdays(){
  if(x.status==='pending_colleague'&&x.recipient_id===user.id||x.status==='pending_manager'&&['owner','admin'].includes(profile.role)){
  actions='<button onclick="answerSaturday(\''+x.id+'\',true)">Accepter</button> <button class="danger" onclick="answerSaturday(\''+x.id+'\',false)">Refuser</button>';
  }
- return '<div class="item">'+fmt(x.saturday_date)+' : '+esc(nm(x.requester_id))+' → '+esc(nm(x.recipient_id))+' — '+esc(x.status)+'<div class="actions">'+actions+'</div></div>';
+ const involved=x.requester_id===user.id||x.recipient_id===user.id||['owner','admin'].includes(profile.role);if(!involved)return '';const state={pending_colleague:'En attente du collègue',pending_manager:'En attente de validation',approved:'Validé',rejected:'Refusé'}[x.status]||x.status;return '<div class="item">'+fmt(x.saturday_date)+' : '+employeeTag(nm(x.requester_id))+' → '+employeeTag(nm(x.recipient_id))+' — '+esc(state)+'<div class="actions">'+actions+'</div></div>';
  }).join('')||'<p class="muted">Aucune demande.</p>';
  }catch(e){msgError(e)}
 }
