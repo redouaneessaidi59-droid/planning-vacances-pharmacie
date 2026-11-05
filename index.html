@@ -351,7 +351,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
   }
 }
 
-  if (profile.role === 'owner') {
+  if (profile.role === 'owner' || profile.role === 'admin') {
     const { data: priv, error } = await sb
       .from('replacement_details')
       .select(`
