@@ -95,7 +95,7 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
   </div>
 </div>
 <div class="tabs">
-<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="availability">Disponibilités</button><button data-tab="recovery">Récupérations</button><button data-tab="saturdays">Samedis</button><button data-tab="messages">Messagerie</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
+<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="replacement">Se proposer pour remplacer</button><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="availability">Disponibilités</button><button data-tab="recovery">Récupérations</button><button data-tab="saturdays">Samedis</button><button data-tab="messages">Messagerie</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
 </div>
 <section id="calendarSection" class="card">
   <div class="row">
@@ -109,8 +109,9 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 <section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
 <div class="grid"><div><label>Premier jour d'absence</label><input type="date" id="leaveStart"></div><div><label>Dernier jour d'absence</label><input type="date" id="leaveEnd"></div></div>
 <div id="rangePicker" class="card" style="background:#f7faf8"><strong>Périodes sélectionnées</strong><p class="hint">Clique une fois sur le début, puis sur la fin. Pour une journée seule, sélectionne-la deux fois avec le bouton « Ajouter cette journée ». Recommence pour ajouter une autre période.</p><div id="rangeSummary">Aucune période sélectionnée.</div><button type="button" id="addSingleDay" class="secondary" style="display:none">Terminer cette journée</button><button type="button" id="clearRanges" class="secondary">Effacer la sélection</button></div><p class="hint">Préavis interne : 7 jours pour une absence de 5 jours maximum, 15 jours au-delà. Ces délais ne remplacent pas les dispositions légales ou conventionnelles. La direction vise une réponse sous 7 jours.</p><label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button></div>
-<hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
-<h3>Se proposer pour remplacer</h3><label>Demande à remplacer</label><select id="replaceLeave"></select>
+</section>
+<section id="replacement" class="card hidden">
+<h2>Se proposer pour remplacer</h2><p class="hint">Consulte les besoins de remplacement dans le calendrier. Clique sur une absence pour retrouver la demande, puis indique tes horaires.</p><div id="replacementNeeds" class="item">Chargement des besoins…</div><label>Demande à remplacer</label><select id="replaceLeave"></select>
 <div class="grid"><div><label>Jour du remplacement</label><input id="replacementWorkDate" type="date"></div><div><label>Début du remplacement</label><input id="replacementWorkStart" type="time" value="09:00"></div><div><label>Fin du remplacement</label><input id="replacementWorkEnd" type="time" value="19:00"></div></div><label>Mode de compensation (visible uniquement par la direction)</label><select id="compMode"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select>
 <div id="recoveryFields"><label>Dates souhaitées de récupération</label><input type="date" id="recoveryDate"><p class="hint">La date proposée devra être approuvée par Ibrahim.</p></div>
 <small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
@@ -174,7 +175,7 @@ let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
 show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','availability','saturdays','schedules'].includes(tab));if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -554,6 +555,13 @@ $('availSave').onclick=async()=>{
  if(error)msgError(error);else{notice('Disponibilité ajoutée.');renderAvailability()}
 };
 window.delAvailability=async id=>{const {error}=await sb.from('replacement_availability').delete().eq('id',id).eq('user_id',user.id);if(error)msgError(error);else renderAvailability()};
+async function renderReplacementNeeds(){
+ const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='pending'&&x.user_id!==user?.id&&!x.replacements?.length);
+ const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
+ const needs=recoveries.error?[]:(recoveries.data||[]).filter(x=>x.user_id!==user?.id);
+ $('replacementNeeds').innerHTML='<strong>Absences à remplacer : '+leaves.length+'</strong><p class="hint">Clique sur une absence dans le calendrier pour renseigner ta proposition.</p>'+
+ (needs.length?'<h3>Récupérations demandées par les collègues</h3>'+needs.map(x=>'<div class="item">'+esc(nm(x.user_id))+' souhaite récupérer le '+fmt(x.recovery_date)+' — besoin éventuel de remplacement. <span class="muted">Proposition pour récupération : en cours de mise en place.</span></div>').join(''):'');
+}
 async function renderRecovery(){
  try{
  await getTeam();
@@ -729,7 +737,7 @@ cell.appendChild(number);
 
 const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const count=remainingStaff(date);const badge=document.createElement('div');badge.style.cssText='font-size:20px;font-weight:800;text-align:center;margin-top:10px';badge.textContent=count===null?'Effectif ?':count+' restant(s)';cell.appendChild(badge)}};
 
-if(tab!=='request')(window.calendarLeaves || []).forEach(leave => {
+if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
   if (date < leave.start_date || date > leave.end_date) return;
 
@@ -745,7 +753,7 @@ if(tab!=='request')(window.calendarLeaves || []).forEach(leave => {
   event.style.borderLeft=leave.status==='approved'?'4px solid #236c5b':'4px dashed #a66b12';
   event.textContent=absentName+(leave.status==='approved'?' · Congé validé':' · En attente');
   const replacement=leave.replacements?.find(x=>x.profiles?.full_name);
-  if(replacement){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='white';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
+  if(tab==='replacement'&&leave.status==='pending'&&leave.user_id!==user?.id&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();$('replaceLeave').value=leave.id;$('replacementWorkDate').value=date;$('replaceLeave').scrollIntoView({behavior:'smooth',block:'center'})}}if(replacement){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='white';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
   else cell.appendChild(event);
 });
 
