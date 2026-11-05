@@ -88,6 +88,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .schedule-lane{min-width:70px;position:relative}.schedule-track{background:repeating-linear-gradient(to top,#f2f5f3 0,#f2f5f3 24%,#dce4df 24%,#dce4df 25%)}.schedule-axis{display:flex;flex-direction:column;justify-content:space-between;height:172px;position:absolute;top:21px;left:0;transform:translateX(-2px);font-size:8px;color:#475569;pointer-events:none}.schedule-track{margin-left:24px}.schedule-hours{font-size:10px;font-weight:750;text-align:center;line-height:1.4;overflow-wrap:anywhere}.schedule-timeline{min-height:255px}.schedule-lane-label{overflow:visible;white-space:normal;text-align:center}
 .schedule-axis{position:absolute;top:21px;left:0;height:172px;width:44px;transform:none;display:block;pointer-events:none}.schedule-axis-tick{position:absolute;left:0;transform:translateY(50%);white-space:nowrap;font-size:10px;font-weight:750;color:#334155}.schedule-lane{min-width:93px}.schedule-track{margin-left:48px}.schedule-lane-label{font-size:11px}.schedule-timeline{gap:10px}
 
+/* Horaires habituels : toutes les colonnes visibles sans défilement latéral. */
+#calendarGrid .schedule-timeline{width:100%;max-width:100%;box-sizing:border-box;overflow-x:hidden;gap:3px;padding-left:0;padding-right:0}
+#calendarGrid .schedule-lane{min-width:0;flex:1 1 0;width:0;gap:4px}
+#calendarGrid .schedule-axis{width:24px}
+#calendarGrid .schedule-axis-tick{font-size:8px}
+#calendarGrid .schedule-track{margin-left:25px;width:min(22px,calc(100% - 26px));min-width:5px}
+#calendarGrid .schedule-lane-label{font-size:clamp(8px,.8vw,10px);overflow-wrap:anywhere;line-height:1.15}
+#calendarGrid .schedule-hours{font-size:9px}
+@media(max-width:600px){#calendarGrid .schedule-timeline{gap:1px}#calendarGrid .schedule-axis{width:16px}#calendarGrid .schedule-axis-tick{font-size:7px}#calendarGrid .schedule-track{margin-left:17px;width:min(16px,calc(100% - 18px))}#calendarGrid .schedule-lane-label{font-size:8px}}
 /* Affichage large sur ordinateur : exploite presque toute la largeur de l'écran. */
 @media(min-width:900px){
  header{padding-left:clamp(24px,3vw,64px);padding-right:clamp(24px,3vw,64px)}
