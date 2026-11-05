@@ -169,7 +169,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
 <div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
 <section id="schedules" class="card hidden"><h2>Horaires habituels</h2><p class="muted">Semaine type de chaque salarié. Les horaires du samedi alterné se gèrent séparément. Les horaires passés sont conservés.</p><div id="scheduleList" class="hidden" aria-hidden="true"></div><div id="scheduleEditor" class="hidden"><h3>Modifier les horaires</h3><div class="grid"><div><label>Salarié</label><select id="scheduleEmployee"></select></div><div><label>À partir du</label><input id="scheduleEffective" type="date"></div></div><p class="hint">Un créneau par ligne, au format Jour;HH:MM;HH:MM. Jours : 1=lundi, 2=mardi, …, 7=dimanche. Une journée sans créneau est un repos. Les interruptions ne sont pas comptées ; pour une pause rémunérée, saisissez une plage continue.</p><label>Créneaux</label><textarea id="scheduleSlots" rows="9" placeholder="1;09:00;12:30&#10;1;14:00;19:00"></textarea><div class="actions"><button id="scheduleSave">Enregistrer une nouvelle version</button></div></div></section><section id="availability" class="card hidden"><h2>Disponibilités pour remplacer</h2><div class="grid"><div><label>Date</label><input type="date" id="availDate"></div><div><label>Début</label><input type="time" id="availStart" value="09:00"></div><div><label>Fin</label><input type="time" id="availEnd" value="19:00"></div></div><label>Précisions</label><input id="availNote"><button id="availSave">Ajouter ma disponibilité</button><div id="availList"></div></section>
-<section id="recovery" class="card hidden"><h2>Calendrier des récupérations</h2><p class="hint">Vert : récupération envisageable (au moins deux collègues prévus toute la journée). Gris : jour non travaillé. Orange : effectif insuffisant, demande exceptionnelle possible. Clique sur une date pour la choisir ; Ibrahim doit ensuite valider.</p><div class="grid"><div><label for="recEmployee">Calendrier du salarié</label><select id="recEmployee"></select></div></div><div class="row"><button id="recPrev">❮</button><h3 id="recTitle"></h3><button id="recNext">❯</button></div><div id="recCalendar" class="month-grid"></div><label>Date sélectionnée</label><input id="recDate" type="date"><label>Commentaire</label><input id="recNote"><button id="recSend">Demander une récupération</button><div id="recList"></div><div id="recAdmin"></div></section>
+<section id="recovery" class="card hidden"><h2>Calendrier des récupérations</h2><p class="hint">Vert : récupération envisageable (au moins deux collègues prévus toute la journée). Gris : jour non travaillé. Orange : effectif insuffisant, demande exceptionnelle possible. Clique sur une date pour la choisir ; Ibrahim doit ensuite valider.</p><div class="grid"><div><label for="recEmployee">Calendrier du salarié</label><select id="recEmployee"></select></div></div><div class="row"><button id="recPrev">❮</button><h3 id="recTitle"></h3><button id="recNext">❯</button></div><div id="recCalendar" class="month-grid"></div><label>Date sélectionnée</label><input id="recDate" type="date"><label>Durée de récupération</label><select id="recKind"><option value="day">Journée complète (1 jour)</option><option value="morning">Matinée (0,5 jour)</option><option value="afternoon">Après-midi (0,5 jour)</option><option value="hours">Quelques heures précises</option></select><div id="recHours" class="grid hidden"><div><label>Début</label><input id="recStart" type="time" value="09:00"></div><div><label>Fin</label><input id="recEnd" type="time" value="10:00"></div></div><label>Commentaire</label><input id="recNote"><button id="recSend">Demander une récupération</button><div id="recList"></div><div id="recAdmin"></div></section>
 <section id="saturdays" class="card hidden"><h2>Gestion des samedis</h2><p class="hint">Clique sur ta case du samedi dans le calendrier ci-dessus pour demander un remplaçant. Les collègues peuvent se proposer directement sur la case encadrée en rouge.</p><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
 <section id="messages" class="card hidden"><h2>Messagerie privée avec Ibrahim</h2><div id="messageThread"></div><div id="messageRecipientWrap" class="hidden"><label>Répondre à</label><select id="messageRecipient"></select></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
 <section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
@@ -255,13 +255,13 @@ async function renderBalances(){const accrual=await sb.rpc('apply_monthly_leave_
 
 async function showRecoveryHours(){
  const el=$('myRecoveryHours');if(!el)return;
- const {data,error}=await sb.rpc('recovery_credit_breakdown',{p_employee_id:user.id});
+ const {data,error}=await sb.rpc('recovery_available',{p_employee_id:user.id});
  if(error){el.textContent='Récupération indisponible : '+error.message;return}
  const half=(data||[]).reduce((a,x)=>a+Number(x.half_days||0),0);
  const n=(data||[]).reduce((a,x)=>a+Number(x.extra_minutes||0),0);
  const days=Math.floor(half/2),remaining=half%2;
- el.textContent=(days?days+' jour'+(days>1?'s':''):'')+(remaining?(days?' + ':'')+'0,5 jour':'')+((days||remaining)?' + ':'')+Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' acquis';
- const info=document.createElement('small');info.className='muted';info.textContent='Crédits issus des remplacements validés. La déduction automatique des récupérations prises reste à finaliser.';el.appendChild(info);
+ el.textContent=(days?days+' jour'+(days>1?'s':''):'')+(remaining?(days?' + ':'')+'0,5 jour':'')+((days||remaining)?' + ':'')+Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' disponibles';
+ const info=document.createElement('small');info.className='muted';info.textContent='Solde net après les récupérations validées et les transferts vers les heures rémunérées.';el.appendChild(info);
 }
 let paidHoursMonth=new Date().toISOString().slice(0,7);
 async function renderPaidHours(){
@@ -721,22 +721,26 @@ async function renderRecovery(){
  }
  $('recCalendar').innerHTML=html;
  $('recCalendar').querySelectorAll('[data-rec]').forEach(x=>x.onclick=()=>{if($('recDate').value===x.dataset.rec){$('recDate').value='';x.style.outline='';return} $('recDate').value=x.dataset.rec;$('recCalendar').querySelectorAll('[data-rec]').forEach(b=>b.style.outline='');x.style.outline='3px solid #174b40';notice('Récupération sélectionnée : '+fmt(x.dataset.rec))});
- $('recList').innerHTML='<h3>Mes récupérations</h3>'+recs.filter(x=>x.user_id===viewedId).map(x=>'<div class="item">'+fmt(x.recovery_date)+' — '+esc(status(x.status))+'</div>').join('');
- $('recAdmin').innerHTML=(profile.role==='admin'||profile.role==='owner')?'<h3>À valider</h3>'+recs.filter(x=>x.status==='pending').map(x=>'<div class="item">'+esc(nm(x.user_id))+' '+fmt(x.recovery_date)+' <button onclick="decideRecovery(\''+x.id+'\',true)">Valider</button> <button class="danger" onclick="decideRecovery(\''+x.id+'\',false)">Refuser</button></div>').join(''):'';
+ $('recList').innerHTML='<h3>Mes récupérations</h3>'+recs.filter(x=>x.user_id===viewedId).map(x=>'<div class="item">'+fmt(x.recovery_date)+' — '+esc(status(x.status))+' · '+(x.debit_half_days?x.debit_half_days/2+' jour(s)':'')+(x.debit_minutes?' '+displayMinutes(x.debit_minutes):'')+'</div>').join('');
+ $('recAdmin').innerHTML=(profile.role==='admin'||profile.role==='owner')?'<h3>À valider</h3>'+recs.filter(x=>x.status==='pending').map(x=>'<div class="item">'+esc(nm(x.user_id))+' '+fmt(x.recovery_date)+' · '+(x.debit_half_days?x.debit_half_days/2+' jour(s)':'')+(x.debit_minutes?' '+displayMinutes(x.debit_minutes):'')+' <button onclick="decideRecovery(\''+x.id+'\',true)">Valider</button> <button class="danger" onclick="decideRecovery(\''+x.id+'\',false)">Refuser</button></div>').join(''):'';
  }catch(e){msgError(e)}
 }
-$('recEmployee').onchange=()=>{ $('recDate').value='';renderRecovery()};
+$('recKind').onchange=()=>show('recHours',$('recKind').value==='hours');$('recEmployee').onchange=()=>{ $('recDate').value='';renderRecovery()};
 $('recPrev').onclick=()=>{recMonth.setMonth(recMonth.getMonth()-1,1);renderRecovery()};
 $('recNext').onclick=()=>{recMonth.setMonth(recMonth.getMonth()+1,1);renderRecovery()};
 $('recSend').onclick=async()=>{
  if(!$('recDate').value){notice('Clique sur une date.',true);return}
  if($('recEmployee').value!==user.id){notice('Pour demander une récupération, sélectionne ton propre calendrier.',true);return}
- const {error}=await sb.from('recovery_requests').insert({user_id:user.id,recovery_date:$('recDate').value,note:$('recNote').value});
- if(error)msgError(error);else{notice('Récupération demandée.');renderRecovery()}
+ const kind=$('recKind').value,start=$('recStart').value,end=$('recEnd').value;
+ if(kind==='hours'&&(!start||!end||start>=end)){notice('Choisis des horaires valides.',true);return}
+ if(!confirm('Confirmer la demande de récupération du '+fmt($('recDate').value)+' ('+(kind==='day'?'1 jour':kind==='morning'||kind==='afternoon'?'0,5 jour':start+'–'+end)+') ?'))return;
+ const {error}=await sb.rpc('request_recovery',{p_date:$('recDate').value,p_kind:kind,p_start:kind==='hours'?start:null,p_end:kind==='hours'?end:null,p_note:$('recNote').value});
+ if(error)msgError(error);else{notice('Récupération demandée, en attente de validation.');await renderRecovery();await showRecoveryHours()}
 };
 window.decideRecovery=async(id,accept)=>{
- const {error}=await sb.from('recovery_requests').update({status:accept?'approved':'rejected',decided_by:user.id}).eq('id',id).eq('status','pending');
- if(error)msgError(error);else{notice('Décision enregistrée.');renderRecovery()}
+ if(!confirm(accept?'Valider la récupération et déduire le compteur ?':'Refuser cette récupération ?'))return;
+ const {error}=await sb.rpc('manager_decide_recovery',{p_id:id,p_accept:accept});
+ if(error)msgError(error);else{notice('Décision enregistrée.');await renderRecovery();await showRecoveryHours()}
 };
 async function loadSaturdayCalendar(){
  const [people,assignments,covers]=await Promise.all([sb.from('profiles').select('id,full_name,role'),sb.from('saturday_assignments').select('saturday_date,user_id').order('saturday_date'),sb.from('saturday_cover_requests').select('*')]);
