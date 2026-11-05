@@ -588,7 +588,7 @@ $('availSave').onclick=async()=>{
  if(error)msgError(error);else{notice('Disponibilité ajoutée.');renderAvailability()}
 };
 window.delAvailability=async id=>{const {error}=await sb.from('replacement_availability').delete().eq('id',id).eq('user_id',user.id);if(error)msgError(error);else renderAvailability()};
-async async function renderReplacementNeeds(){
+async function renderReplacementNeeds(){
  const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='pending'&&x.user_id!==user?.id&&!x.replacements?.length);
  const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
  const needs=recoveries.error?[]:(recoveries.data||[]).filter(x=>x.user_id!==user?.id);
@@ -612,7 +612,7 @@ async function renderRecovery(){
  for(let i=0;i<(new Date(y,m,1).getDay()+6)%7;i++)html+='<div></div>';
  for(let n=1;n<=days;n++){
  const date=y+'-'+String(m+1).padStart(2,'0')+'-'+String(n).padStart(2,'0'),wd=(new Date(y,m,n).getDay()+6)%7+1;
- const version=scheduleCurrent(user.id,date),works=version&&scheduleSlots.some(s=>s.version_id===version.id&&s.weekday===wd);
+ const version=scheduleCurrent(user.id,date),works=version&&scheduleSlots.some(s=>s.version_id===version.id&&Number(s.weekday)===new Date(date+'T12:00:00').getDay());
  const leave=scheduleLeaves.some(x=>x.user_id===user.id&&x.start_date<=date&&x.end_date>=date);
  const already=recs.some(x=>x.user_id===user.id&&x.recovery_date===date&&x.status!=='rejected');
  const critical=staffingCriticalPeriods(date);
