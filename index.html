@@ -780,6 +780,8 @@ if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>se
 
 if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
+  // Le planning collectif est officiel : aucune demande en attente n'y figure.
+  if (tab === 'overview' && leave.status !== 'approved') return;
   if (date < leave.start_date || date > leave.end_date) return;
 
   const event = document.createElement('div');
@@ -794,7 +796,7 @@ if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave
   event.style.borderLeft=leave.status==='approved'?'4px solid #236c5b':'4px dashed #a66b12';
   event.textContent=absentName+(leave.status==='approved'?' · Congé validé':' · En attente');
   const replacement=leave.replacements?.find(x=>x.profiles?.full_name);
-  if(tab==='replacement'&&leave.status==='pending'&&leave.user_id!==user?.id&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();$('replaceLeave').value=leave.id;$('replacementWorkDate').value=date;$('replaceLeave').scrollIntoView({behavior:'smooth',block:'center'})}}if(replacement){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='white';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
+  if(tab==='replacement'&&leave.status==='pending'&&leave.user_id!==user?.id&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();$('replaceLeave').value=leave.id;$('replacementWorkDate').value=date;$('replaceLeave').scrollIntoView({behavior:'smooth',block:'center'})}}if(replacement&&tab!=='overview'){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='white';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
   else cell.appendChild(event);
 });
 
