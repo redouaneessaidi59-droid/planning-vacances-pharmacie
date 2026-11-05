@@ -633,9 +633,12 @@ async function renderRecovery(){
  const leave=scheduleLeaves.some(x=>x.user_id===user.id&&x.start_date<=date&&x.end_date>=date);
  const already=recs.some(x=>x.user_id===user.id&&x.recovery_date===date&&x.status!=='rejected');
  const critical=staffingCriticalPeriods(date);
- const recommended=works&&!critical.length&&!leave&&!already;
- const label=leave?'Congé déjà posé':already?'Déjà demandé':!works?'Repos habituel':recommended?'✓ Possible · couverture habituelle suffisante':'⚠ À confirmer · effectif réduit sur certaines plages';
- const cl=leave||already?'busy':!works?'off':recommended?'':'busy';
+ // Le creux de 12 h à 14 h ne colore pas toute la journée en jaune.
+ const outsideLunch=critical.filter(p=>p.start<720||p.end>840);
+ const lunchOnly=critical.length>0&&!outsideLunch.length;
+ const recommended=works&&!outsideLunch.length&&!leave&&!already;
+ const label=leave?'Congé déjà posé':already?'Déjà demandé':!works?'Repos habituel':lunchOnly?'À confirmer uniquement de 12 h à 14 h':recommended?'✓ Possible · couverture habituelle suffisante':'⚠ À confirmer · effectif réduit hors 12 h–14 h';
+ const cl=leave||already?'busy':!works?'off':outsideLunch.length?'busy':'';
  html+='<button type="button" class="'+cl+'" data-rec="'+date+'" style="'+(recommended?'background:#c5f1d6;color:#13532c;':'')+'">'+n+'<small style="display:block">'+label+'</small></button>';
  }
  $('recCalendar').innerHTML=html;
