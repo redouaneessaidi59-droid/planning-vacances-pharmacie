@@ -271,6 +271,7 @@ async function renderPaidHours(){
  const weekStart=date=>{const d=new Date(date+'T12:00:00');d.setDate(d.getDate()-(d.getDay()+6)%7);return d.toISOString().slice(0,10)};
  const groups=new Map();
  for(const r of rows){const wk=weekStart(r.work_date),key=r.employee_id+'|'+wk;if(!groups.has(key))groups.set(key,{name:r.employee_name,week:wk,minutes:0,rows:[]});const g=groups.get(key);g.minutes+=r.minutes;g.rows.push(r)}
+ for(const g of groups.values())g.weekTotal=(paid.data||[]).filter(r=>r.employee_name===g.name&&weekStart(r.work_date)===g.week).reduce((n,r)=>n+r.minutes,0);
  const nav=document.createElement('div');nav.className='row';
  const prev=document.createElement('button');prev.textContent='❮';prev.className='secondary';
  const next=document.createElement('button');next.textContent='❯';next.className='secondary';
@@ -282,7 +283,7 @@ async function renderPaidHours(){
  const hint=document.createElement('p');hint.className='hint';hint.textContent='Heures exactes de remplacement validées, regroupées par semaine du lundi au dimanche. Attention : les seuils légaux d’heures supplémentaires dépendent du contrat et de toutes les heures réellement travaillées ; les majorations ne sont pas calculées ici.';box.appendChild(hint);
  if(!groups.size){const empty=document.createElement('p');empty.textContent='Aucune heure rémunérée validée sur ce mois.';box.appendChild(empty)}
  for(const g of [...groups.values()].sort((a,b)=>b.week.localeCompare(a.week)||a.name.localeCompare(b.name))){
-  const details=document.createElement('details');details.className='item';const summary=document.createElement('summary');summary.textContent=g.name+' · semaine du '+fmt(g.week)+' · '+hm(g.minutes);details.appendChild(summary);
+  const details=document.createElement('details');details.className='item';const summary=document.createElement('summary');summary.textContent=g.name+' · semaine du '+fmt(g.week)+' · '+hm(g.weekTotal)+' sur la semaine ('+hm(g.minutes)+' dans ce mois)';details.appendChild(summary);
   for(const r of g.rows){const line=document.createElement('p');line.textContent=fmt(r.work_date)+' · '+shortTime(r.start_time)+'–'+shortTime(r.end_time)+' · '+hm(r.minutes);details.appendChild(line)}box.appendChild(details)
  }
  const heading=document.createElement('h3');heading.textContent='Heures à récupérer par salarié';box.appendChild(heading);
