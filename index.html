@@ -591,7 +591,7 @@ $('availSave').onclick=async()=>{
  if(error)msgError(error);else{notice('Disponibilité ajoutée.');renderAvailability()}
 };
 window.delAvailability=async id=>{const {error}=await sb.from('replacement_availability').delete().eq('id',id).eq('user_id',user.id);if(error)msgError(error);else renderAvailability()};
-async async function renderReplacementNeeds(){
+async function renderReplacementNeeds(){
  const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='pending'&&x.user_id!==user?.id&&!x.replacements?.length);
  const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
  if(recoveries.error){$('replacementNeeds').textContent='Impossible de charger les récupérations : '+recoveries.error.message;return}
