@@ -170,7 +170,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
 <section id="schedules" class="card hidden"><h2>Horaires habituels</h2><p class="muted">Semaine type de chaque salarié. Les horaires du samedi alterné se gèrent séparément. Les horaires passés sont conservés.</p><div id="scheduleList" class="hidden" aria-hidden="true"></div><div id="scheduleEditor" class="hidden"><h3>Modifier les horaires</h3><div class="grid"><div><label>Salarié</label><select id="scheduleEmployee"></select></div><div><label>À partir du</label><input id="scheduleEffective" type="date"></div></div><p class="hint">Un créneau par ligne, au format Jour;HH:MM;HH:MM. Jours : 1=lundi, 2=mardi, …, 7=dimanche. Une journée sans créneau est un repos. Les interruptions ne sont pas comptées ; pour une pause rémunérée, saisissez une plage continue.</p><label>Créneaux</label><textarea id="scheduleSlots" rows="9" placeholder="1;09:00;12:30&#10;1;14:00;19:00"></textarea><div class="actions"><button id="scheduleSave">Enregistrer une nouvelle version</button></div></div></section><section id="availability" class="card hidden"><h2>Disponibilités pour remplacer</h2><div class="grid"><div><label>Date</label><input type="date" id="availDate"></div><div><label>Début</label><input type="time" id="availStart" value="09:00"></div><div><label>Fin</label><input type="time" id="availEnd" value="19:00"></div></div><label>Précisions</label><input id="availNote"><button id="availSave">Ajouter ma disponibilité</button><div id="availList"></div></section>
 <section id="recovery" class="card hidden"><h2>Calendrier des récupérations</h2><p class="hint">Vert : récupération envisageable (au moins deux collègues prévus toute la journée). Gris : jour non travaillé. Orange : effectif insuffisant, demande exceptionnelle possible. Clique sur une date pour la choisir ; Ibrahim doit ensuite valider.</p><div class="grid"><div><label for="recEmployee">Calendrier du salarié</label><select id="recEmployee"></select></div></div><div class="row"><button id="recPrev">❮</button><h3 id="recTitle"></h3><button id="recNext">❯</button></div><div id="recCalendar" class="month-grid"></div><label>Date sélectionnée</label><input id="recDate" type="date"><label>Commentaire</label><input id="recNote"><button id="recSend">Demander une récupération</button><div id="recList"></div><div id="recAdmin"></div></section>
-<section id="saturdays" class="card hidden"><h2>Gestion des samedis</h2><p class="hint">Clique directement sur un samedi où tu travailles pour demander un remplacement. Toute l'équipe voit les demandes et peut se proposer.</p><div class="row"><button id="satPrev" class="secondary">❮</button><h3 id="satMonthTitle"></h3><button id="satNext" class="secondary">❯</button></div><div id="satCalendar" class="month-grid"></div><h3>Demander un remplaçant pour mon samedi</h3><div class="grid"><div><label>Samedi sélectionné</label><input id="satCoverDate" type="date" readonly></div><div><label>Plage à remplacer</label><select id="satCoverShift"></select></div></div><button id="satCoverSend">Publier ma demande de remplacement</button><h3>Demandes visibles par l'équipe</h3><div id="satCoverRequests"></div><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
+<section id="saturdays" class="card hidden"><h2>Gestion des samedis</h2><p class="hint">Clique sur ta case du samedi dans le calendrier ci-dessus pour demander un remplaçant. Les collègues peuvent se proposer directement sur la case encadrée en rouge.</p><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
 <section id="messages" class="card hidden"><h2>Messagerie privée avec Ibrahim</h2><div id="messageThread"></div><div id="messageRecipientWrap" class="hidden"><label>Répondre à</label><select id="messageRecipient"></select></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
 <section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
 <section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
@@ -683,7 +683,7 @@ async function renderSaturdays(){
  const [a,b,c]=await Promise.all([sb.from('saturday_assignments').select('*').order('saturday_date'),sb.from('saturday_swaps').select('*').order('created_at',{ascending:false}),sb.from('saturday_cover_requests').select('*').order('created_at',{ascending:false})]);
  if(a.error||b.error||c.error)throw a.error||b.error||c.error;
  sats=a.data||[];swaps=b.data||[];satCovers=c.data||[];if(typeof renderCalendar==='function')renderCalendar();
- renderSaturdayMonth();
+ renderCalendar();
  $('satDate').innerHTML=sats.filter(x=>x.user_id===user.id).map(x=>'<option value="'+x.saturday_date+'">'+fmt(x.saturday_date)+'</option>').join('');
  $('satRecipient').innerHTML=team.filter(x=>x.id!==user.id).map(x=>'<option value="'+x.id+'">'+esc(x.full_name)+'</option>').join('');
  $('satExchange').innerHTML=sats.filter(x=>x.user_id!==user.id).map(x=>'<option value="'+x.saturday_date+'">'+fmt(x.saturday_date)+' — '+esc(nm(x.user_id))+'</option>').join('');
@@ -704,51 +704,29 @@ function saturdayMyShifts(date){
  if(assigned&&!own.some(x=>x.start==='14:00'))own.push({start:'14:00',end:'19:00'});
  return own.filter((x,i,a)=>a.findIndex(y=>y.start===x.start&&y.end===x.end)===i);
 }
-function selectSaturdayCover(date){
- const slots=saturdayMyShifts(date);
- if(!slots.length){notice('Ce samedi ne figure pas dans tes horaires.',true);return}
- $('satCoverDate').value=date;
- $('satCoverShift').innerHTML=slots.map(x=>'<option value="'+x.start+'|'+x.end+'">'+x.start+'–'+x.end+'</option>').join('');
- renderSaturdayMonth();
- $('satCoverSend').scrollIntoView({behavior:'smooth',block:'center'});
-}
-function renderSaturdayMonth(){
- const y=satMonth.getFullYear(),m=satMonth.getMonth(),max=new Date(y,m+1,0).getDate();
- $('satMonthTitle').textContent=satMonth.toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
- let html=['L','M','M','J','V','S','D'].map(x=>'<div class="heading">'+x+'</div>').join('');
- const offset=(new Date(y,m,1).getDay()+6)%7;html+='<div></div>'.repeat(offset);
- for(let d=1;d<=max;d++){
-  const date=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),isSat=new Date(y,m,d).getDay()===6;
-  const mine=isSat&&saturdayMyShifts(date).length>0,requests=satCovers.filter(x=>x.saturday_date===date&&['open','pending_manager','approved'].includes(x.status));
-  const assigned=sats.filter(x=>x.saturday_date===date).map(x=>nm(x.user_id));
-  const label=String(d)+(mine?' · Mon samedi':'')+(assigned.length?' · '+assigned.join(', '):'')+(requests.length?' · '+requests.length+' demande(s)':'');
-  html+='<button type="button" '+(mine?'data-sat="'+date+'"':'disabled')+' class="'+(mine?'':'off')+'" style="'+(mine?'border:2px solid #174b40;':'')+'">'+esc(label)+'</button>';
- }
- $('satCalendar').innerHTML=html;
- $('satCalendar').querySelectorAll('[data-sat]').forEach(b=>b.onclick=()=>selectSaturdayCover(b.dataset.sat));
- $('satCoverRequests').innerHTML=satCovers.filter(x=>x.status!=='cancelled').map(x=>{
-  const state={open:'Recherche un remplaçant',pending_manager:'Volontaire trouvé — validation Ibrahim/Redouane',approved:'Remplacement validé',rejected:'Refusé'}[x.status]||x.status;
-  const action=x.status==='open'&&x.requester_id!==user.id?'<button onclick="actSaturdayCover(\''+x.id+'\',\'volunteer\')">Je me propose</button>':
-   x.status==='pending_manager'&&['owner','admin'].includes(profile.role)?'<button onclick="actSaturdayCover(\''+x.id+'\',\'approve\')">Valider</button> <button class="danger" onclick="actSaturdayCover(\''+x.id+'\',\'reject\')">Refuser</button>':
-   ['open','pending_manager'].includes(x.status)&&x.requester_id===user.id?'<button class="secondary" onclick="actSaturdayCover(\''+x.id+'\',\'cancel\')">Annuler</button>':'';
-  return '<div class="item"><strong>'+fmt(x.saturday_date)+' · '+esc(nm(x.requester_id))+'</strong> · '+shortTime(x.start_time)+'–'+shortTime(x.end_time)+'<p>'+esc(state)+(x.volunteer_id?' · '+esc(nm(x.volunteer_id)):'')+'</p>'+action+'</div>';
- }).join('')||'<p class="muted">Aucune demande de remplacement.</p>';
-}
-$('satPrev').onclick=()=>{satMonth.setMonth(satMonth.getMonth()-1,1);renderSaturdayMonth()};
-$('satNext').onclick=()=>{satMonth.setMonth(satMonth.getMonth()+1,1);renderSaturdayMonth()};
-$('satCoverSend').onclick=async()=>{
- const date=$('satCoverDate').value,shift=$('satCoverShift').value;
- if(!date||!shift){notice('Clique sur ton samedi dans le calendrier.',true);return}
- const [start_time,end_time]=shift.split('|');
- if(!saturdayMyShifts(date).some(x=>x.start===start_time&&x.end===end_time)){notice('Horaire non attribué.',true);return}
+
+async function requestSaturdayCover(date,start_time,end_time){
+ if(!saturdayMyShifts(date).some(x=>x.start===start_time&&x.end===end_time)){notice('Ce créneau ne figure pas dans tes horaires.',true);return}
  const {error}=await sb.from('saturday_cover_requests').insert({saturday_date:date,requester_id:user.id,start_time,end_time});
- if(error)msgError(error);else{notice('Demande visible par toute l’équipe.');renderSaturdays()}
-};
+ if(error)msgError(error);else{notice('Demande publiée, visible par toute l’équipe.');await renderSaturdays()}
+}
+function saturdaySlotMenu(cell,date){
+ const old=cell.querySelector('.sat-inline-menu');if(old){old.remove();return}
+ const slots=saturdayMyShifts(date);
+ const menu=document.createElement('div');menu.className='sat-inline-menu';
+ menu.style.cssText='background:#fff;border:1px solid #bbb;border-radius:8px;padding:8px;margin-top:6px;color:#222;position:relative;z-index:3';
+ const title=document.createElement('strong');title.textContent='Demander à être remplacé';menu.appendChild(title);
+ for(const slot of slots){
+  const existing=satCovers.some(x=>x.saturday_date===date&&x.requester_id===user.id&&x.start_time.slice(0,5)===slot.start&&x.end_time.slice(0,5)===slot.end&&['open','pending_manager','approved'].includes(x.status));
+  const btn=document.createElement('button');btn.type='button';btn.textContent=slot.start+'–'+slot.end+(existing?' · déjà demandé':'');btn.disabled=existing;btn.style.margin='4px';
+  btn.onclick=e=>{e.stopPropagation();requestSaturdayCover(date,slot.start,slot.end)};menu.appendChild(btn);
+ }
+ cell.appendChild(menu);
+}
 window.actSaturdayCover=async(id,action)=>{
  const {error}=await sb.rpc('act_on_saturday_cover',{p_id:id,p_action:action});
  if(error)msgError(error);else{notice('Demande mise à jour.');await renderSaturdays();renderCalendar()}
 };
-
 $('satMode').onchange=()=>show('satExchangeWrap',$('satMode').value==='exchange');
 $('satSend').onclick=async()=>{
  const date=$('satDate').value,recipient=$('satRecipient').value,mode=$('satMode').value,exchange=mode==='exchange'?$('satExchange').value:null;
@@ -953,13 +931,24 @@ if(tab==='schedules'){
   cell.appendChild(wrap);
  }else{const empty=document.createElement('div');empty.className='schedule-empty';empty.textContent='Aucun horaire renseigné';cell.appendChild(empty)}
 }
-if(new Date(year,month,day).getDay()===6){const anchor=new Date(2026,10,7,12),current=new Date(year,month,day,12);const weeks=Math.round((current-anchor)/604800000);const afternoon=weeks%2===0;const hours=document.createElement('div');hours.className='calendar-saturday-hours';hours.textContent=afternoon?'Ouvert 9 h–12 h 30 · 14 h–19 h':'Ouvert 9 h–12 h 30';cell.appendChild(hours);const assignments=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);for(const assignment of assignments){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent=(afternoon?'Après-midi · ':'Samedi · ')+person;cell.appendChild(sat)}
+if(new Date(year,month,day).getDay()===6){const anchor=new Date(2026,10,7,12),current=new Date(year,month,day,12);const weeks=Math.round((current-anchor)/604800000);const afternoon=weeks%2===0;const hours=document.createElement('div');hours.className='calendar-saturday-hours';hours.textContent=afternoon?'Ouvert 9 h–12 h 30 · 14 h–19 h':'Ouvert 9 h–12 h 30';cell.appendChild(hours);const assignments=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);for(const assignment of assignments){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent=(afternoon?'Après-midi · ':'Samedi · ')+person;cell.appendChild(sat);if(tab==='saturdays'&&assignment.user_id===user?.id){sat.style.cursor='pointer';sat.title='Cliquer pour demander un remplaçant';sat.onclick=e=>{e.stopPropagation();saturdaySlotMenu(cell,date)}}}
 for(const cover of (typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.saturday_date===date&&['open','pending_manager','approved'].includes(x.status))){
  const event=document.createElement('div');event.className='calendar-event';
  const requester=nm(cover.requester_id),volunteer=cover.volunteer_id?nm(cover.volunteer_id):'';
  event.style.background=cover.status==='approved'?employeeColor(volunteer):'#f3e8cb';event.style.color=cover.status==='approved'?'white':'#594317';
  event.textContent=cover.status==='approved'?requester+' remplacé par '+volunteer+' · '+shortTime(cover.start_time)+'–'+shortTime(cover.end_time):requester+' · '+(cover.status==='open'?'Recherche remplaçant':'Remplaçant proposé, validation en attente')+' · '+shortTime(cover.start_time)+'–'+shortTime(cover.end_time);
  if(tab==='overview'&&cover.status!=='approved')continue;
+ if(tab==='saturdays'){
+  if(cover.status!=='approved'){event.style.border='2px solid #d62828';event.style.borderRadius='5px'}
+  const actions=document.createElement('div');actions.style.marginTop='4px';
+  let action=null,label='';
+  if(cover.status==='open'&&cover.requester_id!==user?.id){action='volunteer';label='Je propose de remplacer'}
+  else if(cover.status==='pending_manager'&&['owner','admin'].includes(profile?.role)){action='approve';label='Valider le remplacement'}
+  else if(['open','pending_manager'].includes(cover.status)&&cover.requester_id===user?.id){action='cancel';label='Annuler ma demande'}
+  if(action){const btn=document.createElement('button');btn.type='button';btn.textContent=label;btn.style.cssText='font-size:11px;padding:5px;margin:2px 0';btn.onclick=e=>{e.stopPropagation();window.actSaturdayCover(cover.id,action)};actions.appendChild(btn)}
+  if(cover.status==='pending_manager'&&['owner','admin'].includes(profile?.role)){const reject=document.createElement('button');reject.type='button';reject.textContent='Refuser';reject.onclick=e=>{e.stopPropagation();window.actSaturdayCover(cover.id,'reject')};actions.appendChild(reject)}
+  event.appendChild(actions);
+ }
  cell.appendChild(event);
 }}
 grid.appendChild(cell);
