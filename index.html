@@ -190,7 +190,7 @@ if (typeof renderCalendar === 'function') {
 }                    
 $('requestsList').innerHTML=data.map(r=>`<div class="item"><div class="row"><strong>${esc(r.profiles?.full_name||'Salarié')}</strong><span class="badge ${r.status==='approved'?'ok':r.status==='rejected'?'no':'wait'}">${status(r.status)}</span></div><p>${fmt(r.start_date)} → ${fmt(r.end_date)}</p><span class="muted">${r.replacements?.[0]?.profiles?.full_name?'Remplaçant proposé : '+esc(r.replacements[0].profiles.full_name):'En attente d’un remplaçant'}</span></div>`).join('')||'<p class="muted">Aucune demande pour le moment.</p>';
 $('replaceLeave').innerHTML=data.filter(r=>r.user_id!==user.id&&r.status==='pending'&&(!r.replacements||!r.replacements.length)).map(r=>`<option value="${r.id}">${esc(r.profiles?.full_name||'Salarié')} — ${fmt(r.start_date)} au ${fmt(r.end_date)}</option>`).join('')}
-$('sendLeave').onclick=async()=>{const ranges=leaveRanges.length?leaveRanges:($('leaveStart').value&&$('leaveEnd').value?[[$('leaveStart').value,$('leaveEnd').value]]:[]);if(pendingRangeStart){notice('Termine la période en cliquant sur son dernier jour.',true);return}if(!ranges.length||ranges.some(r=>r[1]<r[0])){notice('Sélectionne une ou plusieurs périodes valides.',true);return}const today=new Date();today.setHours(0,0,0,0);for(const [start,end] of ranges){const days=leaveRangeDates(start,end).length,noticeDays=Math.round((new Date(start+'T00:00:00')-today)/86400000);if(noticeDays<(days<=5?7:15)){notice('Préavis interne insuffisant pour la période du '+fmt(start)+' : '+(days<=5?7:15)+' jours requis. Contacte Ibrahim pour une urgence.',true);return}}let count=0;for(const [start,end] of ranges){const {error}=await sb.from('leave_requests').insert({user_id:user.id,start_date:start,end_date:end,note:$('leaveNote').value});if(error){notice(count+' période(s) envoyée(s) ; échec sur '+fmt(start)+' : '+error.message,true);await refresh();return}count++}leaveRanges=[];pendingRangeStart=null;updateRangeSummary();renderCalendar();$('leaveNote').value='';notice(count+' période(s) envoyée(s).');await refresh()};
+$('sendLeave').onclick=async()=>{const ranges=leaveRanges.length?leaveRanges:($('leaveStart').value&&$('leaveEnd').value?[[$('leaveStart').value,$('leaveEnd').value]]:[]);if(pendingRangeStart){notice('Termine la période en cliquant sur son dernier jour.',true);return}if(!ranges.length||ranges.some(r=>r[1]<r[0])){notice('Sélectionne une ou plusieurs périodes valides.',true);return}const today=new Date();today.setHours(0,0,0,0);for(const [start,end] of ranges){const days=leaveRangeDates(start,end).length,noticeDays=Math.round((new Date(start+'T00:00:00')-today)/86400000);if(noticeDays<(days<=5?7:15)){notice('Préavis interne insuffisant pour la période du '+fmt(start)+' : '+(days<=5?7:15)+' jours requis. Contacte Ibrahim pour une urgence.',true);return}}let count=0;for(const [start,end] of ranges){const {error}=await sb.from('leave_requests').insert({user_id:user.id,start_date:start,end_date:end,note:$('leaveNote').value});if(error){notice(count+' période(s) envoyée(s) ; échec sur '+fmt(start)+' : '+error.message,true);await refresh();return}count++}leaveRanges=[];pendingRangeStart=null;rangeMode=false;updateRangeSummary();renderCalendar();$('leaveNote').value='';notice(count+' période(s) envoyée(s).');await refresh()};
 $('compMode').onchange=()=>show('recoveryFields',$('compMode').value==='recovery');
 $('sendReplacement').onclick=async()=>{const leaveId=$('replaceLeave').value,mode=$('compMode').value,recovery=$('recoveryDate').value;if(!leaveId){notice("Aucune demande disponible pour un remplacement.",true);return}if(mode==='recovery'&&!recovery){notice("Choisis une date de récupération.",true);return}
 const wd=$('replacementWorkDate').value,ws=$('replacementWorkStart').value,we=$('replacementWorkEnd').value;if(!wd||!ws||!we||ws>=we){notice('Indique le jour et les heures de remplacement.',true);return}const {data:leave,error:le}=await sb.from('leave_requests').select('start_date,end_date').eq('id',leaveId).single();if(le||wd<leave.start_date||wd>leave.end_date){notice('Le remplacement doit avoir lieu pendant les congés.',true);return}const {error}=await sb.rpc('propose_replacement',{p_leave_id:leaveId,p_mode:mode,p_recovery_date:mode==='recovery'?recovery:null});if(error)notice(error.message,true);else{const {error:se}=await sb.from('replacement_work_slots').insert({leave_id:leaveId,replacement_user_id:user.id,work_date:wd,start_time:ws,end_time:we});notice(se?'Proposition enregistrée, mais les heures n’ont pas pu être sauvegardées : '+se.message:'Proposition et horaires transmis. Compensation confidentielle.',!!se);await refresh()}}
@@ -628,27 +628,22 @@ $('messageSend').onclick=async()=>{
  if(error)msgError(error);else{$('messageBody').value='';notice('Message envoyé.');renderMessages()}
 };
 
-let leaveRanges=[],pendingRangeStart=null;
+let leaveRanges=[],pendingRangeStart=null,rangeMode=false;
 function leaveRangeDates(a,b){const out=[];let d=new Date(a+'T12:00:00'),end=new Date(b+'T12:00:00');while(d<=end){out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));d.setDate(d.getDate()+1)}return out}
-function updateRangeSummary(){const el=$('rangeSummary');if(!el)return;const dates=new Set(leaveRanges.flatMap(r=>leaveRangeDates(r[0],r[1])));el.textContent=leaveRanges.length?leaveRanges.map(r=>fmt(r[0])+(r[0]===r[1]?'':' → '+fmt(r[1]))).join(' ; ')+' — '+dates.size+' jour(s) calendaires sélectionné(s)'+(pendingRangeStart?' ; début suivant : '+fmt(pendingRangeStart):''):pendingRangeStart?'Début choisi : '+fmt(pendingRangeStart)+' ; clique sur le dernier jour.':'Aucune période sélectionnée.';$('addSingleDay').style.display=pendingRangeStart?'inline-block':'none';const all=[...dates].sort();$('leaveStart').value=all[0]||pendingRangeStart||'';$('leaveEnd').value=all.at(-1)||pendingRangeStart||''}
 function rebuildLeaveRanges(dates){const sorted=[...dates].sort();leaveRanges=[];let first=null,last=null;for(const d of sorted){if(first===null){first=d;last=d;continue}const next=new Date(last+'T12:00:00');next.setDate(next.getDate()+1);const iso=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');if(d!==iso){leaveRanges.push([first,last]);first=d}last=d}if(first!==null)leaveRanges.push([first,last])}
+function updateRangeSummary(){const el=$('rangeSummary');if(!el)return;const dates=new Set(leaveRanges.flatMap(r=>leaveRangeDates(r[0],r[1])));el.textContent=leaveRanges.length?leaveRanges.map(r=>fmt(r[0])+(r[0]===r[1]?'':' → '+fmt(r[1]))).join(' ; ')+' — '+dates.size+' jour(s) calendaires sélectionné(s)':'Aucune période sélectionnée.';if(pendingRangeStart)el.textContent+=' — Début de période : '+fmt(pendingRangeStart)+' ; choisis la fin.';const all=[...dates].sort();$('leaveStart').value=all[0]||'';$('leaveEnd').value=all.at(-1)||'';$('addSingleDay').textContent=rangeMode?'Annuler la sélection de période':'Sélectionner une période';$('addSingleDay').style.display='inline-block'}
 function selectLeaveDate(date){
  const selected=new Set(leaveRanges.flatMap(r=>leaveRangeDates(r[0],r[1])));
- if(selected.has(date)){
-   selected.delete(date);
-   pendingRangeStart=null;
- }else if(pendingRangeStart){
-   for(const d of leaveRangeDates(date<pendingRangeStart?date:pendingRangeStart,date>pendingRangeStart?date:pendingRangeStart))selected.add(d);
-   pendingRangeStart=null;
- }else{
-   selected.add(date);
-   pendingRangeStart=date;
- }
- rebuildLeaveRanges(selected);
- updateRangeSummary();renderCalendar();
+ if(rangeMode){
+   if(!pendingRangeStart){pendingRangeStart=date}
+   else{for(const d of leaveRangeDates(date<pendingRangeStart?date:pendingRangeStart,date>pendingRangeStart?date:pendingRangeStart))selected.add(d);pendingRangeStart=null;rangeMode=false}
+ }else if(selected.has(date)){selected.delete(date)}
+ else{selected.add(date)}
+ rebuildLeaveRanges(selected);updateRangeSummary();renderCalendar();
 }
-$('addSingleDay').onclick=()=>{if(!pendingRangeStart)return;pendingRangeStart=null;updateRangeSummary();renderCalendar()};
-$('clearRanges').onclick=()=>{leaveRanges=[];pendingRangeStart=null;updateRangeSummary();renderCalendar()};
+$('addSingleDay').onclick=()=>{rangeMode=!rangeMode;pendingRangeStart=null;updateRangeSummary();renderCalendar()};
+$('clearRanges').onclick=()=>{leaveRanges=[];pendingRangeStart=null;rangeMode=false;updateRangeSummary();renderCalendar()};
+updateRangeSummary();
 let calendarDate = new Date();
 
 function renderCalendar() {
