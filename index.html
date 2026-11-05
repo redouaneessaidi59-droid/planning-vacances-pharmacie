@@ -786,7 +786,7 @@ number.textContent = day;
 cell.appendChild(number);
 
 const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;const sunday=new Date(year,month,day).getDay()===0;const holiday=holidayName(date);const vacation=holidayCalendarLabel(date);
-if(sunday||holiday){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title=sunday?'Pharmacie fermée le dimanche':'Jour férié — fermeture à confirmer : '+holiday}
+if(sunday){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title='Pharmacie fermée le dimanche'}else if(holiday){cell.title='Jour férié — fermeture à confirmer : '+holiday}
 if(holiday){const flag=document.createElement('div');flag.className='calendar-holiday';flag.textContent='⚑ '+holiday;cell.appendChild(flag)}
 if(vacation){const tag=document.createElement('div');tag.className='calendar-school';tag.textContent=vacation;cell.appendChild(tag)}
 if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const checks=[['10 h','10:00'],['12 h','12:00'],['14 h 30','14:30'],['17 h','17:00']];const badge=document.createElement('div');badge.className='staffing-periods';badge.setAttribute('aria-label','Effectif restant par heure');badge.textContent=checks.map(([label,clock])=>{const count=staffingByMoment(date,clock);return label+' : '+(count===null?'?':count)}).join(' · ');cell.appendChild(badge)}};
