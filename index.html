@@ -736,7 +736,7 @@ $('clearRanges').onclick=()=>{leaveRanges=[];pendingRangeStart=null;rangeMode=fa
 updateRangeSummary();
 let calendarDate = new Date();
 
-function saturdayStaffOverrides(date){const day=new Date(date+'T12:00:00').getDay();if(day!==6)return [];const openAfternoon=((Math.round((new Date(date+'T12:00:00')-new Date('2026-11-07T12:00:00'))/604800000)%2)+2)%2===0;return (schedulePeople||[]).flatMap(p=>{const n=String(p.full_name||'').toLowerCase();if(n.includes('essaidi')||n.includes('redouane'))return [{name:p.full_name,start:'09:00',end:'12:00'}];if(n.includes('mohamed'))return [{name:p.full_name,start:'09:00',end:'12:30'},...(openAfternoon?[{name:p.full_name,start:'14:00',end:'19:00'}]:[])];return []})}
+function saturdayStaffOverrides(date){const day=new Date(date+'T12:00:00').getDay();if(day!==6)return [];const openAfternoon=((Math.round((new Date(date+'T12:00:00')-new Date('2026-11-07T12:00:00'))/604800000)%2)+2)%2===0;return (schedulePeople||[]).flatMap(p=>{const n=String(p.full_name||'').toLowerCase();if(n.includes('essaidi')||n.includes('redouane'))return [{name:p.full_name,start:'09:00',end:'12:30'}];if(n.includes('mohamed'))return [{name:p.full_name,start:'09:00',end:'12:30'},...(openAfternoon?[{name:p.full_name,start:'14:00',end:'19:00'}]:[])];return []})}
 function scheduleBars(date){
  if(typeof schedulePeople==='undefined'||typeof scheduleVersions==='undefined'||typeof scheduleSlots==='undefined')return [];
  const weekday=new Date(date+'T12:00:00').getDay();const index=weekday===0?7:weekday;
