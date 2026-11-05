@@ -591,7 +591,8 @@ window.delAvailability=async id=>{const {error}=await sb.from('replacement_avail
 async async function renderReplacementNeeds(){
  const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='pending'&&x.user_id!==user?.id&&!x.replacements?.length);
  const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
- const needs=recoveries.error?[]:(recoveries.data||[]).filter(x=>x.user_id!==user?.id);
+ if(recoveries.error){$('replacementNeeds').textContent='Impossible de charger les récupérations : '+recoveries.error.message;return}
+ const needs=(recoveries.data||[]).filter(x=>x.user_id!==user?.id);
  $('replacementNeeds').innerHTML='<strong>Absences à remplacer : '+leaves.length+'</strong><p class="hint">Clique sur une absence dans le calendrier pour renseigner ta proposition.</p>'+
  (needs.length?'<h3>Récupérations demandées par les collègues</h3>'+needs.map(x=>'<div class="item">'+esc(nm(x.user_id))+' souhaite récupérer le '+fmt(x.recovery_date)+' — besoin éventuel de remplacement. <span class="muted">Proposition pour récupération : en cours de mise en place.</span></div>').join(''):'');
 }
