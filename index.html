@@ -147,7 +147,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <nav class="nav-groups" aria-label="Navigation principale">
 <div class="nav-group"><div class="nav-title">📅 Congés et remplacements</div><div class="tabs"><button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="replacement">Je souhaite remplacer <span id="replacementCount" class="nav-count">0</span></button></div></div>
 <div class="nav-group"><div class="nav-title">🗓️ Organisation des samedis</div><div class="tabs"><button data-tab="saturdays">Gestion des samedis</button></div></div>
-<div class="nav-group"><div class="nav-title">⚙️ Mon espace et gestion</div><div class="tabs"><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="messages">Messagerie</button><button data-tab="recovery" id="recoveryManagerTab" class="hidden">Calendrier récupérations</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button></div></div>
+<div class="nav-group"><div class="nav-title">⚙️ Mon espace et gestion</div><div class="tabs"><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="messages">Messagerie</button><button data-tab="recovery" id="recoveryManagerTab" class="hidden">Calendrier récupérations</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button><button data-tab="paidHours" id="paidHoursTab" class="hidden">Heures sup à payer</button></div></div>
 </nav>
 <section id="calendarSection" class="card">
   <div class="row">
@@ -173,7 +173,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <section id="saturdays" class="card hidden"><h2>Gestion des samedis</h2><p class="hint">Clique sur ta case du samedi dans le calendrier ci-dessus pour demander un remplaçant. Les collègues peuvent se proposer directement sur la case encadrée en rouge.</p><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
 <section id="messages" class="card hidden"><h2>Messagerie privée avec Ibrahim</h2><div id="messageThread"></div><div id="messageRecipientWrap" class="hidden"><label>Répondre à</label><select id="messageRecipient"></select></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
 <section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
-<section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
+<section id="paidHours" class="card hidden"><h2>Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
   <button id="createTeamBtn" type="button">Créer les comptes de l'équipe</button>
@@ -225,10 +225,10 @@ $('logout').onclick=async()=>{await sb.auth.signOut();user=null;profile=null;sho
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
-show('adminTab',p.role==='owner'||p.role==='admin');show('recoveryManagerTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
+show('adminTab',p.role==='owner'||p.role==='admin');show('paidHoursTab',p.role==='owner'||p.role==='admin');show('recoveryManagerTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function loadApprovedAbsences(){const {data,error}=await sb.rpc('list_approved_recovery_absences');if(error){window.approvedAbsences=null;notice('Impossible de charger les récupérations validées : '+error.message,true);return}window.approvedAbsences=(data||[]).map(x=>({user_id:x.user_id,date:x.absence_date,start:x.start_time,end:x.end_time}))}
 async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences()]);renderCalendar();if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='recovery'&&!['owner','admin'].includes(profile?.role))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des jauges verticales…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='recovery'&&!['owner','admin'].includes(profile?.role))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin','paidHours'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des jauges verticales…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages();if(tab==='paidHours')renderPaidHours()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -253,6 +253,30 @@ $('sendReplacement').onclick=async()=>{const leaveId=$('replaceLeave').value,mod
 const wd=$('replacementWorkDate').value,ws=$('replacementWorkStart').value,we=$('replacementWorkEnd').value;if(!wd||!ws||!we||ws>=we){notice('Indique le jour et les heures de remplacement.',true);return}const {data:leave,error:le}=await sb.from('leave_requests').select('start_date,end_date').eq('id',leaveId).single();if(le||wd<leave.start_date||wd>leave.end_date){notice('Le remplacement doit avoir lieu pendant les congés.',true);return}const {error}=await sb.rpc('propose_replacement',{p_leave_id:leaveId,p_mode:mode,p_recovery_date:mode==='recovery'?recovery:null});if(error)notice(error.message,true);else{const {error:se}=await sb.from('replacement_work_slots').insert({leave_id:leaveId,replacement_user_id:user.id,work_date:wd,start_time:ws,end_time:we});notice(se?'Proposition enregistrée, mais les heures n’ont pas pu être sauvegardées : '+se.message:'Proposition et horaires transmis. Compensation confidentielle.',!!se);await refresh()}}
 async function renderBalances(){const accrual=await sb.rpc('apply_monthly_leave_accrual');if(accrual.error){console.error('Acquisition mensuelle non appliquée',accrual.error);$('myBalances').textContent='Erreur de calcul des congés : '+accrual.error.message;return;}let {data,error}=await sb.from('balances').select('*').eq('user_id',user.id).single();$('myBalances').innerHTML=error?'<p class="muted">Compteurs non initialisés.</p>':`<div class="grid"><div class="item"><span class="muted">N-1 : ${data.leave_n1} jours</span><h2>N : ${data.leave_n} jours</h2><small>Total : ${data.leave_days} jours</small></div><div class="item"><span class="muted">Récupération disponible</span><h2>${data.recovery_days} jours</h2></div></div>`}
 
+async function renderPaidHours(){
+ if(!['owner','admin'].includes(profile?.role))return;
+ const box=$('paidHoursContent');box.textContent='Chargement…';
+ const {data,error}=await sb.rpc('manager_paid_replacement_hours');
+ if(error){box.textContent='Impossible de charger les heures : '+error.message;return}
+ const groups=new Map();
+ for(const r of data||[]){
+  const key=r.work_month;
+  if(!groups.has(key))groups.set(key,new Map());
+  const people=groups.get(key);
+  if(!people.has(r.employee_id))people.set(r.employee_id,{name:r.employee_name,minutes:0,details:[]});
+  const p=people.get(r.employee_id);p.minutes+=r.minutes;p.details.push(r);
+ }
+ const hm=n=>Math.floor(n/60)+' h '+String(n%60).padStart(2,'0');
+ box.innerHTML=[...groups.entries()].sort((a,b)=>b[0].localeCompare(a[0])).map(([month,people])=>{
+  const title=new Date(month+'T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const sum=[...people.values()].reduce((n,p)=>n+p.minutes,0);
+  return '<div class="item"><h3>'+esc(title)+' — '+hm(sum)+'</h3>'+
+   [...people.values()].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>
+    '<details><summary><strong>'+esc(p.name)+'</strong> : '+hm(p.minutes)+'</summary>'+
+    p.details.map(d=>'<div>'+fmt(d.work_date)+' · '+shortTime(d.start_time)+'–'+shortTime(d.end_time)+' · '+hm(d.minutes)+'</div>').join('')+'</details>'
+   ).join('')+'</div>';
+ }).join('')||'<p class="muted">Aucune heure de remplacement rémunéré validée pour le moment.</p>';
+}
 async function renderAdmin() {
   const { data: bs } = await sb
     .from('balances')
