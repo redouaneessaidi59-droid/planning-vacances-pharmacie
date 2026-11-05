@@ -95,7 +95,7 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
   </div>
 </div>
 <div class="tabs">
-<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="replacement">Se proposer pour remplacer</button><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="availability">Disponibilités</button><button data-tab="recovery">Récupérations</button><button data-tab="saturdays">Samedis</button><button data-tab="messages">Messagerie</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
+<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="replacement">Je souhaite remplacer <span id="replacementCount" style="display:inline-block;background:#fff;color:#174b40;border-radius:12px;padding:1px 7px;font-weight:800" aria-label="Nombre de demandes">0</span></button><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="availability">Disponibilités</button><button data-tab="recovery">Récupérations</button><button data-tab="saturdays">Samedis</button><button data-tab="messages">Messagerie</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
 </div>
 <section id="calendarSection" class="card">
   <div class="row">
@@ -186,6 +186,9 @@ document.querySelectorAll('[data-tab]').forEach(b => {
 });
 async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
 window.calendarLeaves = data || [];
+const openCount=window.calendarLeaves.filter(x=>x.status==='pending'&&x.user_id!==user?.id&&!x.replacements?.length).length;
+const countBadge=document.getElementById('replacementCount');if(countBadge)countBadge.textContent=String(openCount);
+
 if (typeof renderCalendar === 'function') {
   renderCalendar();
 }                    
