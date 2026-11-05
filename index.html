@@ -87,6 +87,19 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .staffing-warning{display:block;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;padding:5px 6px;font-weight:850;font-size:12px;line-height:1.4;margin-top:5px;overflow-wrap:anywhere}
 .schedule-lane{min-width:70px;position:relative}.schedule-track{background:repeating-linear-gradient(to top,#f2f5f3 0,#f2f5f3 24%,#dce4df 24%,#dce4df 25%)}.schedule-axis{display:flex;flex-direction:column;justify-content:space-between;height:172px;position:absolute;top:21px;left:0;transform:translateX(-2px);font-size:8px;color:#475569;pointer-events:none}.schedule-track{margin-left:24px}.schedule-hours{font-size:10px;font-weight:750;text-align:center;line-height:1.4;overflow-wrap:anywhere}.schedule-timeline{min-height:255px}.schedule-lane-label{overflow:visible;white-space:normal;text-align:center}
 .schedule-axis{position:absolute;top:21px;left:0;height:172px;width:44px;transform:none;display:block;pointer-events:none}.schedule-axis-tick{position:absolute;left:0;transform:translateY(50%);white-space:nowrap;font-size:10px;font-weight:750;color:#334155}.schedule-lane{min-width:93px}.schedule-track{margin-left:48px}.schedule-lane-label{font-size:11px}.schedule-timeline{gap:10px}
+
+/* Affichage large sur ordinateur : exploite presque toute la largeur de l'écran. */
+@media(min-width:900px){
+ header{padding-left:clamp(24px,3vw,64px);padding-right:clamp(24px,3vw,64px)}
+ main{max-width:none;width:calc(100% - 48px);margin:20px auto;padding:0 0 50px}
+ footer{max-width:none;width:calc(100% - 48px)}
+ .calendar-day{min-height:145px;padding:12px;font-size:14px}
+ .calendar-event{font-size:12px;padding:6px}
+ .month-grid button{min-height:95px}
+ #calendarGrid,.month-grid{gap:9px}
+ .schedule-lane{min-width:105px}
+ .schedule-track{width:34px}
+}
 </style>
 </head>
 <body>
