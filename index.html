@@ -85,6 +85,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .staffing-periods{font-size:11px;font-weight:750;line-height:1.5;margin-top:7px;overflow-wrap:anywhere}
 .calendar-saturday-hours{font-size:10px;line-height:1.35;font-weight:700;color:#475569;margin:5px 0}
 .staffing-warning{display:block;color:#991b1b;background:#fee2e2;border:1px solid #fca5a5;border-radius:7px;padding:5px 6px;font-weight:850;font-size:12px;line-height:1.4;margin-top:5px;overflow-wrap:anywhere}
+.schedule-lane{min-width:70px;position:relative}.schedule-track{background:repeating-linear-gradient(to top,#f2f5f3 0,#f2f5f3 24%,#dce4df 24%,#dce4df 25%)}.schedule-axis{display:flex;flex-direction:column;justify-content:space-between;height:172px;position:absolute;top:21px;left:0;transform:translateX(-2px);font-size:8px;color:#475569;pointer-events:none}.schedule-track{margin-left:24px}.schedule-hours{font-size:10px;font-weight:750;text-align:center;line-height:1.4;overflow-wrap:anywhere}.schedule-timeline{min-height:255px}.schedule-lane-label{overflow:visible;white-space:normal;text-align:center}
 </style>
 </head>
 <body>
@@ -824,13 +825,13 @@ if(tab==='schedules'){
   for(const [name,periods] of groups){
    const lane=document.createElement('div');lane.className='schedule-lane';lane.title=name+' : '+periods.map(p=>p.start+'–'+p.end).join(' / ');
    const label=document.createElement('span');label.className='schedule-lane-label';label.textContent=name.split(' ')[0];lane.appendChild(label);
-   const track=document.createElement('div');track.className='schedule-track';
+   const axis=document.createElement('div');axis.className='schedule-axis';axis.innerHTML='<span>19 h 30</span><span>14 h</span><span>9 h</span>';lane.appendChild(axis);const track=document.createElement('div');track.className='schedule-track';
    for(const p of periods){
     const from=Math.max(540,Math.min(1170,timeMin(p.start))),to=Math.max(540,Math.min(1170,timeMin(p.end)));
     if(to<=from)continue;
-    const segment=document.createElement('span');segment.className='schedule-segment';segment.style.top=((from-540)/630*100)+'%';segment.style.height=((to-from)/630*100)+'%';segment.style.background=employeeColor(name);segment.title=name+' · '+p.start+'–'+p.end;track.appendChild(segment);
+    const segment=document.createElement('span');segment.className='schedule-segment';segment.style.bottom=((from-540)/630*100)+'%';segment.style.height=((to-from)/630*100)+'%';segment.style.background=employeeColor(name);segment.title=name+' · '+p.start+'–'+p.end;track.appendChild(segment);
    }
-   lane.appendChild(track);wrap.appendChild(lane);
+   lane.appendChild(track);const times=document.createElement('div');times.className='schedule-hours';times.textContent=periods.map(p=>p.start+'–'+p.end).join(' / ');lane.appendChild(times);wrap.appendChild(lane);
   }
   cell.appendChild(wrap);
  }else{const empty=document.createElement('div');empty.className='schedule-empty';empty.textContent='Aucun horaire renseigné';cell.appendChild(empty)}
