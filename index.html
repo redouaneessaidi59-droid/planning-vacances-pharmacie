@@ -163,7 +163,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <div id="rangePicker" class="card" style="background:#f7faf8"><strong>Périodes sélectionnées</strong><p class="hint">Clique une fois sur le début, puis sur la fin. Pour une journée seule, sélectionne-la deux fois avec le bouton « Ajouter cette journée ». Recommence pour ajouter une autre période.</p><div id="rangeSummary">Aucune période sélectionnée.</div><button type="button" id="addSingleDay" class="secondary" style="display:none">Terminer cette journée</button><button type="button" id="clearRanges" class="secondary">Effacer la sélection</button></div><p class="hint">Préavis interne : 7 jours pour une absence de 5 jours maximum, 15 jours au-delà. Ces délais ne remplacent pas les dispositions légales ou conventionnelles. La direction vise une réponse sous 7 jours.</p><label>Type de demande</label><select id="absenceKind"><option value="leave">Congés payés</option><option value="recovery">Récupération (1 jour pris = 1 jour déduit)</option></select><div id="recoveryInline" class="hidden"><p class="hint">Les récupérations sont comptées uniquement sur les jours réellement pris, indépendamment des congés payés.</p><label>Date de récupération</label><input id="inlineRecDate" type="date"><label>Commentaire récupération</label><input id="inlineRecNote"><button type="button" id="inlineRecSend">Demander une récupération</button><div id="inlineRecList"></div></div><label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button></div>
 </section>
 <section id="replacement" class="card hidden">
-<h2>Se proposer pour remplacer</h2><p class="hint">Repère les journées à couvrir dans le calendrier, puis clique sur le nom du collègue absent pour choisir tes heures et ta compensation.</p><div class="item"><strong>Lecture du calendrier</strong><p class="hint">🟢 À couvrir : une absence attend un volontaire · 🟡 À renforcer : effectif réduit sur certains horaires · 🔴 Prioritaire : aucun autre collègue prévu sur certains horaires. Ces indications sont des aides à l'organisation, pas des validations automatiques.</p></div><div id="replacementNeeds" class="item">Chargement des besoins…</div><label>Demande à remplacer</label><select id="replaceLeave"></select>
+<h2>Se proposer pour remplacer</h2><p class="hint">Repère les journées à couvrir dans le calendrier, puis clique sur le nom du collègue absent pour choisir tes heures et ta compensation.</p><div class="item"><strong>Lecture du calendrier</strong><p class="hint">🟢 À couvrir : au moins 2 collègues présents · 🟡 À renforcer : 1 seul collègue présent sur une partie de la journée, notamment le midi · 🔴 Prioritaire : aucun collègue présent sur au moins un créneau, midi compris. Le niveau correspond au moment où l’effectif est le plus faible, selon les plannings et absences connus.</p></div><div id="replacementNeeds" class="item">Chargement des besoins…</div><label>Demande à remplacer</label><select id="replaceLeave"></select>
 <div class="grid"><div><label>Jour du remplacement</label><input id="replacementWorkDate" type="date"></div><div><label>Début du remplacement</label><input id="replacementWorkStart" type="time" value="09:00"></div><div><label>Fin du remplacement</label><input id="replacementWorkEnd" type="time" value="19:00"></div></div><label>Mode de compensation (visible uniquement par la direction)</label><select id="compMode"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select>
 <p class="hint">Les heures choisies en récupération sont cumulées après validation du remplacement, sans date de récupération à fixer maintenant.</p>
 <small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
@@ -876,6 +876,25 @@ function staffingByMoment(date,clock){
   return onShift&&!leaves.some(leave=>leave.user_id===person.id&&leave.status==='approved'&&date>=leave.start_date&&date<=leave.end_date)&&!recoveries.some(r=>r.user_id===person.id&&r.date===date&&(!r.start||!r.end||(timeMin(r.start)<=minute&&minute<timeMin(r.end))));
  }).length;
 }
+function replacementStaffingLevel(date){
+ if(!schedulePeople.length||!scheduleVersions.length||!scheduleSlots.length)return null;
+ const weekday=new Date(date+'T12:00:00').getDay();if(weekday===0)return null;
+ const weeks=Math.round((new Date(date+'T12:00:00')-new Date(2026,10,7,12))/604800000);
+ const opening=weekday===6?[[540,750],...(weeks%2===0?[[840,1140]]:[])]:[[540,1170]];
+ const absences=(window.calendarLeaves||[]).filter(l=>l.status!=='rejected'&&date>=l.start_date&&date<=l.end_date);
+ const recovery=window.approvedAbsences||[];
+ const slots=scheduleBars(date);
+ const samples=[];
+ for(const [start,end] of opening)for(let minute=start;minute<end;minute+=15){
+  const names=new Set(slots.filter(x=>timeMin(x.start)<=minute&&timeMin(x.end)>minute).map(x=>x.name));
+  for(const l of absences)names.delete(l.profiles?.full_name||nm(l.user_id));
+  for(const r of recovery)if(r.date===date&&(!r.start||!r.end||(timeMin(r.start)<=minute&&minute<timeMin(r.end))))names.delete(nm(r.user_id));
+  samples.push({minute,count:names.size});
+ }
+ if(!samples.length)return null;
+ const minimum=Math.min(...samples.map(x=>x.count));
+ return {minimum,times:samples.filter(x=>x.count===minimum).slice(0,3).map(x=>staffingClock(x.minute))};
+}
 function staffingCriticalPeriods(date){
  if(!schedulePeople.length||!scheduleVersions.length||!Array.isArray(window.approvedAbsences))return [];
  const weekday=new Date(date+'T12:00:00').getDay();
@@ -982,11 +1001,11 @@ if(tab==='request'&&!sunday&&!holiday){cell.classList.add('calendar-clickable');
 if(tab==='replacement'&&!sunday){
  const needsToday=(window.calendarLeaves||[]).some(l=>l.user_id!==user?.id&&l.status==='pending'&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
  if(needsToday){
-  const periods=staffingCriticalPeriods(date);
-  const urgent=periods.some(p=>p.count===0),reduced=periods.some(p=>p.count===1);
+  const staffing=replacementStaffingLevel(date);
+  const urgent=staffing?.minimum===0,reduced=staffing?.minimum===1;
   const state=urgent?'Prioritaire':reduced?'À renforcer':'À couvrir';
   const tag=document.createElement('div');tag.className='calendar-event';tag.style.cssText='font-weight:700;font-size:11px;border-radius:6px;padding:4px;margin-top:4px;background:'+(urgent?'#fce0df':reduced?'#fff0cc':'#d8f3e5')+';color:'+(urgent?'#8b2525':reduced?'#7d5200':'#17603a');
-  tag.textContent=state;tag.title=periods.length?'Effectif réduit : '+periods.map(p=>staffingClock(p.start)+'–'+staffingClock(p.end)).join(', '):'Un collègue cherche un remplaçant';cell.appendChild(tag);
+  tag.textContent=state;tag.title=staffing?'Effectif minimal prévu : '+staffing.minimum+' personne(s) · '+staffing.times.join(', '):'Effectifs à vérifier : planning incomplet';cell.appendChild(tag);
  }
 }
 if(['overview','request','replacement'].includes(tab))for(const absence of (window.approvedAbsences||[])){if(absence.date!==date)continue;const e=document.createElement('div');e.className='calendar-event calendar-approved';e.style.background=employeeColor(nm(absence.user_id));e.style.color='white';e.textContent=nm(absence.user_id)+' · Récupération validée'+(absence.start&&absence.end?' ('+shortTime(absence.start)+'–'+shortTime(absence.end)+')':'');cell.appendChild(e)}
