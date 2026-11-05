@@ -59,7 +59,7 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
   .calendar-event { font-size: 10px; }
 }
 
-</style>
+.calendar-clickable{cursor:pointer}.calendar-clickable:hover{outline:2px solid #236c5b}.tabs{position:sticky;top:0;background:#f3f6f4;z-index:5;padding:12px 0}.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:15px 0}.month-grid button{min-height:70px;background:#e7f3ec;color:#174b40;padding:5px}.month-grid button.busy{background:#fcebd2}.month-grid button.off{background:#e8e9e8;color:#555}.month-grid .heading{text-align:center;font-size:12px}@media(max-width:600px){.month-grid button{min-height:52px;font-size:11px;padding:3px}.tabs{position:static}}</style>
 </head>
 <body>
 <header><h1>📅 Planning Vacances</h1><p>Congés, remplacements et récupérations — équipe officinale</p></header>
@@ -95,7 +95,7 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
   </div>
 </div>
 <div class="tabs">
-<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
+<button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="availability">Disponibilités</button><button data-tab="recovery">Récupérations</button><button data-tab="saturdays">Samedis</button><button data-tab="messages">Messagerie</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button>
 </div>
 <section id="calendarSection" class="card">
   <div class="row">
@@ -115,7 +115,11 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 <div id="recoveryFields"><label>Dates souhaitées de récupération</label><input type="date" id="recoveryDate"><p class="hint">La date proposée devra être approuvée par Ibrahim.</p></div>
 <small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
 <div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
-<section id="schedules" class="card hidden"><h2>Horaires habituels</h2><p class="muted">Semaine type de chaque salarié. Les horaires du samedi alterné se gèrent séparément. Les horaires passés sont conservés.</p><div id="scheduleList">Chargement…</div><div id="scheduleEditor" class="hidden"><h3>Modifier les horaires</h3><div class="grid"><div><label>Salarié</label><select id="scheduleEmployee"></select></div><div><label>À partir du</label><input id="scheduleEffective" type="date"></div></div><p class="hint">Un créneau par ligne, au format Jour;HH:MM;HH:MM. Jours : 1=lundi, 2=mardi, …, 7=dimanche. Une journée sans créneau est un repos. Les interruptions ne sont pas comptées ; pour une pause rémunérée, saisissez une plage continue.</p><label>Créneaux</label><textarea id="scheduleSlots" rows="9" placeholder="1;09:00;12:30&#10;1;14:00;19:00"></textarea><div class="actions"><button id="scheduleSave">Enregistrer une nouvelle version</button></div></div></section><section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
+<section id="schedules" class="card hidden"><h2>Horaires habituels</h2><p class="muted">Semaine type de chaque salarié. Les horaires du samedi alterné se gèrent séparément. Les horaires passés sont conservés.</p><div id="scheduleList">Chargement…</div><div id="scheduleEditor" class="hidden"><h3>Modifier les horaires</h3><div class="grid"><div><label>Salarié</label><select id="scheduleEmployee"></select></div><div><label>À partir du</label><input id="scheduleEffective" type="date"></div></div><p class="hint">Un créneau par ligne, au format Jour;HH:MM;HH:MM. Jours : 1=lundi, 2=mardi, …, 7=dimanche. Une journée sans créneau est un repos. Les interruptions ne sont pas comptées ; pour une pause rémunérée, saisissez une plage continue.</p><label>Créneaux</label><textarea id="scheduleSlots" rows="9" placeholder="1;09:00;12:30&#10;1;14:00;19:00"></textarea><div class="actions"><button id="scheduleSave">Enregistrer une nouvelle version</button></div></div></section><section id="availability" class="card hidden"><h2>Disponibilités pour remplacer</h2><div class="grid"><div><label>Date</label><input type="date" id="availDate"></div><div><label>Début</label><input type="time" id="availStart" value="09:00"></div><div><label>Fin</label><input type="time" id="availEnd" value="19:00"></div></div><label>Précisions</label><input id="availNote"><button id="availSave">Ajouter ma disponibilité</button><div id="availList"></div></section>
+<section id="recovery" class="card hidden"><h2>Calendrier des récupérations</h2><p class="hint">Clique sur une date pour demander une récupération. Les jours possibles sont indicatifs et soumis à validation.</p><div class="row"><button id="recPrev">❮</button><h3 id="recTitle"></h3><button id="recNext">❯</button></div><div id="recCalendar" class="month-grid"></div><label>Date sélectionnée</label><input id="recDate" type="date"><label>Commentaire</label><input id="recNote"><button id="recSend">Demander une récupération</button><div id="recList"></div><div id="recAdmin"></div></section>
+<section id="saturdays" class="card hidden"><h2>Rotation des samedis</h2><p class="hint">Séverine et Fanaella rejoindront la fin de la rotation à leur retour.</p><div id="satList"></div><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Demandes de samedis</h3><div id="satRequests"></div></section>
+<section id="messages" class="card hidden"><h2>Messagerie privée avec Ibrahim</h2><div id="messageThread"></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
+<section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div></section>
 <section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
@@ -170,7 +174,7 @@ let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
 show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function refresh(){await Promise.all([renderRequests(),renderBalances()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;if(tab==='schedules')renderSchedules()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -304,20 +308,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
           `}
 
           <div class="actions">
-            <button class="secondary"
-              onclick="setReplacementRequirement('${r.id}', true)">
-              Remplacement obligatoire
-            </button>
-            <button class="secondary"
-              onclick="setReplacementRequirement('${r.id}', false)">
-              Aucun remplacement nécessaire
-            </button>
-            <button onclick="decide('${r.id}','approved')">
-              Valider définitivement
-            </button>
-            <button class="danger" onclick="decide('${r.id}','rejected')">
-              Refuser
-            </button>
+            <button class="secondary" onclick="setReplacementRequirement('${r.id}',true)">Imposer un remplacement</button><button onclick="approveWithoutReplacement('${r.id}')">Valider sans remplacement</button><button class="danger" onclick="decide('${r.id}','rejected')">Refuser</button>
           </div>
         </div>
       `;
@@ -386,6 +377,7 @@ window.setReplacementRequirement = async (id, required) => {
 
   await refresh();
 };
+window.approveWithoutReplacement=async id=>{const {error}=await sb.from('leave_requests').update({replacement_required:false,status:'approved',decided_by:user.id,decided_at:new Date().toISOString()}).eq('id',id).eq('status','pending');if(error)notice(error.message,true);else{notice('Congé validé sans remplacement.');await refresh()}};
 window.confirmReplacement = async (id) => {
   const { error } = await sb.rpc('confirm_replacement', {
     p_leave_id: id
@@ -572,7 +564,7 @@ function renderCalendar() {
 number.textContent = day;
 cell.appendChild(number);
 
-const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;cell.classList.add('calendar-clickable');cell.onclick=()=>{$('leaveStart').value=date;$('leaveEnd').value=date;document.querySelector('[data-tab="request"]').click()};
 
 (window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
