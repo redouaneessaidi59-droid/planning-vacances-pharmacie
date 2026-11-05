@@ -144,8 +144,25 @@ $('login').onclick=async()=>{
    else if(identifiant==='ibrahim') email='isaddouki@gmail.com';
    else email=identifiant+'@planning.test';
  }
- const {error}=await sb.auth.signInWithPassword({email,password:$('password').value});
- if(error)notice('Identifiant ou mot de passe incorrect',true);else loadUser()
+ let error;
+ try {
+   ({error}=await sb.auth.signInWithPassword({email,password:$('password').value}));
+ } catch {
+   notice('Connexion impossible. Vérifiez votre connexion Internet et réessayez. Si le problème persiste, contactez le responsable.',true);
+   return;
+ }
+ if(!error){await loadUser();return}
+ if(error.code==='invalid_credentials'){
+   notice('Identifiant ou mot de passe incorrect.',true);
+ } else if(error.status===429){
+   notice('Trop de tentatives de connexion. Patientez quelques minutes avant de réessayer.',true);
+ } else if(error.status>=500){
+   notice('Le service de connexion est temporairement indisponible. Réessayez dans quelques instants.',true);
+ } else if(error.name==='AuthRetryableFetchError'||error.status===0){
+   notice('Connexion impossible. Vérifiez votre connexion Internet et réessayez. Si le problème persiste, contactez le responsable.',true);
+ } else {
+   notice('La connexion n’a pas pu être autorisée. Réessayez ou contactez le responsable si le problème persiste.',true);
+ }
 };
 $('logout').onclick=async()=>{await sb.auth.signOut();user=null;profile=null;show('app',false);show('auth',true)};
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
@@ -513,12 +530,12 @@ grid.appendChild(cell);
 
 
 document.getElementById('calendarPrev').onclick = () => {
-  calendarDate.setMonth(calendarDate.getMonth() - 1);
+  calendarDate.setMonth(calendarDate.getMonth() - 1, 1);
   renderCalendar();
 };
 
 document.getElementById('calendarNext').onclick = () => {
-  calendarDate.setMonth(calendarDate.getMonth() + 1);
+  calendarDate.setMonth(calendarDate.getMonth() + 1, 1);
   renderCalendar();
 };
 
