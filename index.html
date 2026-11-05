@@ -81,6 +81,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 /* Navigation douce 2026 */
 .nav-group .tabs button,.card button{transition:transform .16s ease,background-color .16s ease}.nav-group .tabs button:active,.card button:active{transform:scale(.97)}@media(prefers-reduced-motion:reduce){.nav-group .tabs button,.card button{transition:none}}
 .schedule-timeline{display:flex;gap:4px;overflow-x:auto;margin-top:8px;padding:4px 0 8px;min-height:154px}.schedule-lane{min-width:29px;flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}.schedule-lane-label{font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.schedule-track{position:relative;height:124px;width:14px;border:1px solid #d7e0db;background:repeating-linear-gradient(to bottom,#f2f5f3 0,#f2f5f3 23%,#dce4df 24%,#f2f5f3 25%);border-radius:5px}.schedule-segment{position:absolute;left:0;width:100%;border-radius:3px;min-height:2px}@media(max-width:600px){.schedule-lane{min-width:25px}.schedule-lane-label{font-size:8px}}
+.schedule-alert{grid-column:1/-1;padding:15px;border-radius:10px;background:#fff4e6;color:#704a14}.schedule-empty{font-size:10px;color:#64748b;margin-top:10px}
 </style>
 </head>
 <body>
@@ -199,7 +200,7 @@ let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
 show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des horaires…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -514,7 +515,7 @@ async function renderSchedules(){
  sb.from('work_schedule_versions').select('id,employee_id,effective_from,created_at'),
  sb.from('work_schedule_slots').select('version_id,weekday,start_time,end_time')
  ]);
- if(p.error||v.error||s.error){$('scheduleList').textContent='Impossible de charger les horaires : '+(p.error||v.error||s.error).message;return}
+ if(p.error||v.error||s.error){if(tab==='schedules')$('calendarGrid').innerHTML='<p class="schedule-alert" role="alert">Impossible de charger les horaires : '+esc((p.error||v.error||s.error).message)+'</p>';return}
  schedulePeople=p.data||[];scheduleVersions=v.data||[];scheduleSlots=s.data||[];if(typeof renderCalendar==='function')renderCalendar();
  const today=new Date().toLocaleDateString('en-CA');
  $('scheduleList').innerHTML=schedulePeople.map(person=>{
@@ -815,7 +816,7 @@ if(tab==='schedules'){
    lane.appendChild(track);wrap.appendChild(lane);
   }
   cell.appendChild(wrap);
- }
+ }else{const empty=document.createElement('div');empty.className='schedule-empty';empty.textContent='Aucun horaire renseigné';cell.appendChild(empty)}
 }
 if(new Date(year,month,day).getDay()===6){const assignment=(typeof sats!=='undefined'?sats:[]).find(x=>x.saturday_date===date);const planned={'2026-11-07':'Redouane','2026-11-21':'Anissa','2026-12-05':'Sylvain','2026-12-19':'Laurence'};if(assignment||planned[date]){const person=assignment?nm(assignment.user_id):planned[date];const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent='Après-midi · '+person+(assignment?'':' (prévu)');cell.appendChild(sat)}}
 grid.appendChild(cell);
