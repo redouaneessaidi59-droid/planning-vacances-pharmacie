@@ -93,7 +93,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <header><h1>📅 Planning Vacances</h1><p>Congés, remplacements et récupérations — équipe officinale</p></header>
 <main>
 <div id="notice"></div>
-<section id="config" class="card">
+<section id="config" class="card hidden">
 <h2>Connexion à la base de données</h2>
 <p class="muted">Renseigne les deux paramètres publics de ton projet Supabase. Ils ne sont pas des mots de passe. Ne partage jamais la clé « service_role ».</p>
 <div class="grid"><div><label>URL du projet Supabase</label><input id="supabaseUrl" placeholder="https://xxxx.supabase.co"></div><div><label>Clé publique (anon / publishable)</label><input id="supabaseKey" placeholder="sb_publishable_... ou clé anon"></div></div>
@@ -167,8 +167,8 @@ const $=id=>document.getElementById(id);
 function notice(msg,error=false){$('notice').textContent=msg;$('notice').style.display='block';$('notice').className=error?'error':''}
 function show(id,on){$(id).classList.toggle('hidden',!on)}
 function cfg(){return {url:'https://qdmjlvxvlgwfipzxpcoe.supabase.co',key:'sb_publishable_c7-enZ9x_7HVpHa19_puSw_FWm_AIbs'}}
-function init(){const c=cfg();if(c.url&&c.key){$('supabaseUrl').value=c.url;$('supabaseKey').value=c.key;connect(c.url,c.key)}}
-function connect(url,key){if(!window.supabase){notice("Impossible de charger la bibliothèque de connexion. Vérifie ta connexion internet.",true);return}
+function init(){const c=cfg();$('supabaseUrl').value=c.url;$('supabaseKey').value=c.key;show('config',false);show('auth',true);connect(c.url,c.key)}
+function connect(url,key){if(!window.supabase){notice("Connexion indisponible : recharge la page ou vérifie Internet.",true);show("config",false);show("auth",true);return}
 sb=window.supabase.createClient(url,key);show('config',false);show('auth',true);sb.auth.getSession().then(({data})=>{if(data.session)loadUser()})}
 $('saveConfig').onclick=()=>{const u=$('supabaseUrl').value.trim(),k=$('supabaseKey').value.trim();if(!u.startsWith('https://')||!k){notice("URL ou clé publique manquante.",true);return}localStorage.setItem('pv_url',u);localStorage.setItem('pv_key',k);connect(u,k)};
 $('login').onclick=async()=>{
