@@ -108,7 +108,7 @@ footer{max-width:1100px;margin:auto;padding:0 16px 30px;color:var(--muted);font-
 <section id="overview" class="card"><h2>Demandes de l'équipe</h2><p class="muted">Les dates et le statut sont visibles par l'équipe. Les modalités de rémunération restent réservées à la direction.</p><div id="requestsList">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
 <div class="grid"><div><label>Premier jour d'absence</label><input type="date" id="leaveStart"></div><div><label>Dernier jour d'absence</label><input type="date" id="leaveEnd"></div></div>
-<div id="rangePicker" class="card" style="background:#f7faf8"><strong>Périodes sélectionnées</strong><p class="hint">Clique une fois sur le début, puis sur la fin. Pour une journée seule, sélectionne-la deux fois avec le bouton « Ajouter cette journée ». Recommence pour ajouter une autre période.</p><div id="rangeSummary">Aucune période sélectionnée.</div><button type="button" id="addSingleDay" class="secondary" style="display:none">Ajouter cette journée seule</button><button type="button" id="clearRanges" class="secondary">Effacer la sélection</button></div><p class="hint">Préavis interne : 7 jours pour une absence de 5 jours maximum, 15 jours au-delà. Ces délais ne remplacent pas les dispositions légales ou conventionnelles. La direction vise une réponse sous 7 jours.</p><label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button></div>
+<div id="rangePicker" class="card" style="background:#f7faf8"><strong>Périodes sélectionnées</strong><p class="hint">Clique une fois sur le début, puis sur la fin. Pour une journée seule, sélectionne-la deux fois avec le bouton « Ajouter cette journée ». Recommence pour ajouter une autre période.</p><div id="rangeSummary">Aucune période sélectionnée.</div><button type="button" id="addSingleDay" class="secondary" style="display:none">Terminer cette journée</button><button type="button" id="clearRanges" class="secondary">Effacer la sélection</button></div><p class="hint">Préavis interne : 7 jours pour une absence de 5 jours maximum, 15 jours au-delà. Ces délais ne remplacent pas les dispositions légales ou conventionnelles. La direction vise une réponse sous 7 jours.</p><label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button></div>
 <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
 <h3>Se proposer pour remplacer</h3><label>Demande à remplacer</label><select id="replaceLeave"></select>
 <div class="grid"><div><label>Jour du remplacement</label><input id="replacementWorkDate" type="date"></div><div><label>Début du remplacement</label><input id="replacementWorkStart" type="time" value="09:00"></div><div><label>Fin du remplacement</label><input id="replacementWorkEnd" type="time" value="19:00"></div></div><label>Mode de compensation (visible uniquement par la direction)</label><select id="compMode"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select>
@@ -631,33 +631,23 @@ $('messageSend').onclick=async()=>{
 let leaveRanges=[],pendingRangeStart=null;
 function leaveRangeDates(a,b){const out=[];let d=new Date(a+'T12:00:00'),end=new Date(b+'T12:00:00');while(d<=end){out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));d.setDate(d.getDate()+1)}return out}
 function updateRangeSummary(){const el=$('rangeSummary');if(!el)return;const dates=new Set(leaveRanges.flatMap(r=>leaveRangeDates(r[0],r[1])));el.textContent=leaveRanges.length?leaveRanges.map(r=>fmt(r[0])+(r[0]===r[1]?'':' → '+fmt(r[1]))).join(' ; ')+' — '+dates.size+' jour(s) calendaires sélectionné(s)'+(pendingRangeStart?' ; début suivant : '+fmt(pendingRangeStart):''):pendingRangeStart?'Début choisi : '+fmt(pendingRangeStart)+' ; clique sur le dernier jour.':'Aucune période sélectionnée.';$('addSingleDay').style.display=pendingRangeStart?'inline-block':'none';const all=[...dates].sort();$('leaveStart').value=all[0]||pendingRangeStart||'';$('leaveEnd').value=all.at(-1)||pendingRangeStart||''}
+function rebuildLeaveRanges(dates){const sorted=[...dates].sort();leaveRanges=[];let first=null,last=null;for(const d of sorted){if(first===null){first=d;last=d;continue}const next=new Date(last+'T12:00:00');next.setDate(next.getDate()+1);const iso=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');if(d!==iso){leaveRanges.push([first,last]);first=d}last=d}if(first!==null)leaveRanges.push([first,last])}
 function selectLeaveDate(date){
-  if(pendingRangeStart===date){pendingRangeStart=null;updateRangeSummary();renderCalendar();return}
-  const existingIndex=leaveRanges.findIndex(r=>date>=r[0]&&date<=r[1]);
-  if(existingIndex!==-1){
-    const [start,end]=leaveRanges[existingIndex];
-    const previous=leaveRangeDates(start,end).filter(d=>d!==date);
-    leaveRanges.splice(existingIndex,1);
-    let groupStart=null,last=null;
-    for(const d of previous){
-      if(groupStart===null){groupStart=d;last=d;continue}
-      const next=new Date(last+'T12:00:00');next.setDate(next.getDate()+1);
-      const nextIso=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');
-      if(d!==nextIso){leaveRanges.push([groupStart,last]);groupStart=d}
-      last=d;
-    }
-    if(groupStart!==null)leaveRanges.push([groupStart,last]);
-    pendingRangeStart=null;
-  }else if(!pendingRangeStart){pendingRangeStart=date}
-  else{
-    let a=pendingRangeStart,b=date;if(b<a)[a,b]=[b,a];
-    const existing=new Set(leaveRanges.flatMap(r=>leaveRangeDates(r[0],r[1])));
-    const union=new Set([...existing,...leaveRangeDates(a,b)]);const sorted=[...union].sort();leaveRanges=[];let groupStart=null,last=null;for(const d of sorted){if(groupStart===null){groupStart=d;last=d;continue}const next=new Date(last+'T12:00:00');next.setDate(next.getDate()+1);const iso=next.getFullYear()+'-'+String(next.getMonth()+1).padStart(2,'0')+'-'+String(next.getDate()).padStart(2,'0');if(d!==iso){leaveRanges.push([groupStart,last]);groupStart=d}last=d}if(groupStart!==null)leaveRanges.push([groupStart,last]);pendingRangeStart=null;
-  }
-  leaveRanges.sort((a,b)=>a[0].localeCompare(b[0]));
-  updateRangeSummary();renderCalendar();
+ const selected=new Set(leaveRanges.flatMap(r=>leaveRangeDates(r[0],r[1])));
+ if(selected.has(date)){
+   selected.delete(date);
+   pendingRangeStart=null;
+ }else if(pendingRangeStart){
+   for(const d of leaveRangeDates(date<pendingRangeStart?date:pendingRangeStart,date>pendingRangeStart?date:pendingRangeStart))selected.add(d);
+   pendingRangeStart=null;
+ }else{
+   selected.add(date);
+   pendingRangeStart=date;
+ }
+ rebuildLeaveRanges(selected);
+ updateRangeSummary();renderCalendar();
 }
-$('addSingleDay').onclick=()=>{if(!pendingRangeStart)return;leaveRanges.push([pendingRangeStart,pendingRangeStart]);pendingRangeStart=null;updateRangeSummary();renderCalendar()};
+$('addSingleDay').onclick=()=>{if(!pendingRangeStart)return;pendingRangeStart=null;updateRangeSummary();renderCalendar()};
 $('clearRanges').onclick=()=>{leaveRanges=[];pendingRangeStart=null;updateRangeSummary();renderCalendar()};
 let calendarDate = new Date();
 
