@@ -174,7 +174,7 @@ let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
 show('adminTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar()]);if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;show('calendarSection',['overview','request','availability','recovery','saturdays','schedules'].includes(tab));if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','balances','schedules','availability','recovery','saturdays','messages','admin'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','availability','recovery','saturdays','schedules'].includes(tab));if(tab==='schedules')renderSchedules();if(tab==='availability')renderAvailability();if(tab==='recovery')renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -534,7 +534,7 @@ let recMonth=new Date(), team=[], sats=[], swaps=[], recs=[], scheduleLeaves=[];
 function nm(id){return team.find(p=>p.id===id)?.full_name||'Salarié'}
 const employeePalette=['#1d4ed8','#dc2626','#16a34a','#9333ea','#ea580c','#0891b2','#be185d','#64748b'];
 const employeeNames=['Redouane','Ibrahim','Anissa','Sylvain','Laurence','Séverine','Fanaella','Mohamed'];
-function employeeColor(name){const n=String(name||'').trim().toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'');const i=employeeNames.findIndex(x=>n.includes(x.toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'')));if(i>=0)return employeePalette[i];let hash=0;for(const c of n)hash=(hash*31+c.charCodeAt(0))>>>0;return employeePalette[hash%employeePalette.length]}
+function employeeColor(name){const n=String(name||'').trim().toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(n.includes('essaidi')||n.includes('redouane'))return employeePalette[0];const i=employeeNames.findIndex(x=>n.includes(x.toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'')));if(i>=0)return employeePalette[i];let hash=0;for(const c of n)hash=(hash*31+c.charCodeAt(0))>>>0;return employeePalette[hash%employeePalette.length]}
 function employeeTag(name,label){return '<span style="display:inline-block;padding:3px 6px;border-radius:5px;background:'+employeeColor(name)+';color:white;font-weight:600">'+esc(label||name||'Salarié')+'</span>'}
 
 function shortTime(t){return String(t||'').slice(0,5)}
@@ -717,7 +717,7 @@ function renderCalendar() {
 number.textContent = day;
 cell.appendChild(number);
 
-const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;cell.classList.add('calendar-clickable');cell.onclick=()=>{selectLeaveDate(date)};if(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const count=remainingStaff(date);const badge=document.createElement('div');badge.style.cssText='font-size:20px;font-weight:800;text-align:center;margin-top:10px';badge.textContent=count===null?'Effectif ?':count+' restant(s)';cell.appendChild(badge)}};
+const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const count=remainingStaff(date);const badge=document.createElement('div');badge.style.cssText='font-size:20px;font-weight:800;text-align:center;margin-top:10px';badge.textContent=count===null?'Effectif ?':count+' restant(s)';cell.appendChild(badge)}};
 
 if(tab!=='request')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
@@ -740,7 +740,7 @@ if(tab!=='request')(window.calendarLeaves || []).forEach(leave => {
 });
 
 if(tab==='schedules'){for(const slot of scheduleBars(date)){const bar=document.createElement('div');bar.className='calendar-event';bar.style.background=employeeColor(slot.name);bar.style.color='white';bar.textContent=slot.name+' · '+slot.start+'–'+slot.end;cell.appendChild(bar)}}
-if(new Date(year,month,day).getDay()===6){const assignment=(typeof sats!=='undefined'?sats:[]).find(x=>x.saturday_date===date);if(assignment){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent='Après-midi · '+person;cell.appendChild(sat)}}
+if(new Date(year,month,day).getDay()===6){const assignment=(typeof sats!=='undefined'?sats:[]).find(x=>x.saturday_date===date);const planned={'2026-11-07':'Redouane','2026-11-21':'Anissa','2026-12-05':'Sylvain','2026-12-19':'Laurence'};if(assignment||planned[date]){const person=assignment?nm(assignment.user_id):planned[date];const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent='Après-midi · '+person+(assignment?'':' (prévu)');cell.appendChild(sat)}}
 grid.appendChild(cell);
   }
 }
