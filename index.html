@@ -82,6 +82,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .nav-group .tabs button,.card button{transition:transform .16s ease,background-color .16s ease}.nav-group .tabs button:active,.card button:active{transform:scale(.97)}@media(prefers-reduced-motion:reduce){.nav-group .tabs button,.card button{transition:none}}
 .schedule-timeline{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding:8px 2px 12px;min-height:215px;align-items:flex-start}.schedule-lane{min-width:43px;flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}.schedule-lane-label{font-size:10px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.schedule-track{position:relative;height:172px;width:27px;border:1px solid #cbd5d1;background:repeating-linear-gradient(to bottom,#f2f5f3 0,#f2f5f3 24%,#dce4df 24%,#dce4df 25%);border-radius:6px}.schedule-segment{position:absolute;left:1px;width:calc(100% - 2px);border-radius:4px;min-height:2px;box-shadow:inset 0 0 0 1px #ffffff55}@media(max-width:600px){.schedule-lane{min-width:37px}.schedule-lane-label{font-size:9px}.schedule-track{width:23px}}
 .schedule-alert{grid-column:1/-1;padding:15px;border-radius:10px;background:#fff4e6;color:#704a14}.schedule-empty{font-size:10px;color:#64748b;margin-top:10px}
+.staffing-periods{font-size:11px;font-weight:750;line-height:1.5;margin-top:7px;overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -725,6 +726,18 @@ function remainingStaff(date){
   return !leaves.some(l=>l.user_id===p.id&&l.status==='approved'&&date>=l.start_date&&date<=l.end_date);
  }).length;
 }
+function staffingByMoment(date,clock){
+ if(!schedulePeople.length||!scheduleVersions.length)return null;
+ const weekday=new Date(date+'T12:00:00').getDay();
+ if(weekday===0)return 0;
+ const minute=timeMin(clock),leaves=window.calendarLeaves||[];
+ return schedulePeople.filter(person=>{
+  if(person.id===user?.id)return false;
+  const version=scheduleCurrent(person.id,date);if(!version)return false;
+  const onShift=scheduleSlots.some(slot=>slot.version_id===version.id&&Number(slot.weekday)===weekday&&timeMin(slot.start_time)<=minute&&timeMin(slot.end_time)>minute);
+  return onShift&&!leaves.some(leave=>leave.user_id===person.id&&leave.status==='approved'&&date>=leave.start_date&&date<=leave.end_date);
+ }).length;
+}
 const schoolHolidaysB=[
  ['2026-10-17','2026-11-01','🎃 Toussaint'],['2026-12-19','2027-01-03','🎄 Noël'],
  ['2027-02-20','2027-03-07','❄️ Hiver'],['2027-04-17','2027-05-02','🌷 Printemps'],
@@ -776,7 +789,7 @@ const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padSta
 if(sunday||holiday){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title=sunday?'Pharmacie fermée le dimanche':'Jour férié — fermeture à confirmer : '+holiday}
 if(holiday){const flag=document.createElement('div');flag.className='calendar-holiday';flag.textContent='⚑ '+holiday;cell.appendChild(flag)}
 if(vacation){const tag=document.createElement('div');tag.className='calendar-school';tag.textContent=vacation;cell.appendChild(tag)}
-if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const count=remainingStaff(date);const badge=document.createElement('div');badge.style.cssText='font-size:20px;font-weight:800;text-align:center;margin-top:10px';badge.textContent=count===null?'Effectif ?':count+' restant(s)';cell.appendChild(badge)}};
+if(tab==='request'){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';if(tab==='request'){const checks=[['10 h','10:00'],['12 h','12:00'],['14 h 30','14:30'],['17 h','17:00']];const badge=document.createElement('div');badge.className='staffing-periods';badge.setAttribute('aria-label','Effectif restant par heure');badge.textContent=checks.map(([label,clock])=>{const count=staffingByMoment(date,clock);return label+' : '+(count===null?'?':count)}).join(' · ');cell.appendChild(badge)}};
 
 if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
