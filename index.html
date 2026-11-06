@@ -430,6 +430,17 @@ async function renderPaidHours(){
   const btn=document.createElement('button');btn.textContent=c.mode==='paid'?'Transformer en récupération':'Transformer en rémunération';btn.onclick=async()=>{btn.disabled=true;const {error}=await sb.rpc('manager_set_saturday_compensation',{p_cover_id:c.cover_id,p_mode:c.mode==='paid'?'recovery':'paid'});if(error)notice(error.message,true);else{notice('Compensation mise à jour.');await renderPaidHours();await showRecoveryHours()}};line.appendChild(btn);box.appendChild(line)
  }
 }
+function showLeaveRequestMessage(requestId){
+ const request=(window.pendingAdminLeaveRequests||[]).find(r=>r.id===requestId);
+ if(!request)return;
+ const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:18px';
+ const panel=document.createElement('div');panel.style.cssText='background:#fff;color:#18312b;border-radius:16px;padding:24px;width:min(650px,100%);max-height:85vh;overflow:auto;box-shadow:0 16px 50px #0005';
+ const title=document.createElement('h2');title.textContent='Message de '+(request.profiles?.full_name||'salarié');
+ const dates=document.createElement('p');dates.className='muted';dates.textContent='Demande du '+fmt(request.start_date)+' au '+fmt(request.end_date);
+ const message=document.createElement('div');message.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;font-size:18px;line-height:1.6;padding:20px;background:#f3f6f4;border:1px solid #d9e4dd;border-radius:12px;min-height:110px;margin:18px 0';message.textContent=request.note?.trim()||'Aucun message joint à cette demande.';
+ const close=document.createElement('button');close.type='button';close.textContent='Fermer';close.onclick=()=>overlay.remove();
+ overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};panel.append(title,dates,message,close);overlay.appendChild(panel);document.body.appendChild(overlay);close.focus();
+}
 async function renderAdmin() {
   const { data: bs } = await sb
     .from('balances')
@@ -506,6 +517,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
       }
     }
 
+    window.pendingAdminLeaveRequests=rs||[];
     $('adminRequests').innerHTML = (rs || []).map(r => {
       const remplacement = replacements.find(x => x.leave_id === r.id);
       const personne = remplacement
@@ -517,6 +529,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
           <strong>${esc(r.profiles?.full_name || 'Salarié')}</strong>
           — ${fmt(r.start_date)} au ${fmt(r.end_date)}
 
+          <div class="actions"><button type="button" class="secondary" onclick="showLeaveRequestMessage('${r.id}')">💬 Lire le message en grand${r.note?.trim()?' · Message joint':''}</button></div>
           <p class="hint">Réponse souhaitée avant le ${fmt(new Date(new Date(r.created_at).getTime()+7*86400000).toISOString().slice(0,10))} (délai interne indicatif).</p><p>Remplacement :
             <strong>${
               r.replacement_required === true ? 'Obligatoire'
@@ -1298,8 +1311,9 @@ if(['overview','request','replacement'].includes(tab))for(const absence of (wind
 if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
   // Le planning collectif est officiel : aucune demande en attente n'y figure.
+  if (tab === 'overview' && leave.status !== 'approved') return;
+  if (leave.status !== 'approved' && !['replacement','request'].includes(tab)) return;
   if (leave.status !== 'approved' && leave.user_id !== user?.id && !['owner','admin'].includes(profile?.role)) return;
-  if (tab === 'overview' && leave.status !== 'approved' && leave.user_id !== user?.id && !['owner','admin'].includes(profile?.role)) return;
   if (date < leave.start_date || date > leave.end_date) return;
 
   const event = document.createElement('div');
