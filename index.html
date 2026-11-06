@@ -421,6 +421,14 @@ tr:nth-child(even) td{background:#fafcfb}
 .simple-dialog-content .calendar-hidden-details .calendar-event{display:block!important}
 .simple-dialog-content .calendar-hidden-details .staffing-day-indicator{display:inline-flex!important}
 @media(max-width:650px){.manager-assign-dialog{width:96vw}.manager-assign-heading{padding:16px}.manager-assign-heading h2{font-size:20px}.manager-assign-fields{padding:7px 16px}.manager-assign-actions{padding:15px 16px 0}.manager-assign-actions button{flex:1 1 100%}}
+
+/* Couleurs individuelles sur le calendrier simplifié, identiques au planning historique */
+#calendarSection .simple-calendar-day .simple-day-employee{
+  display:block;color:#fff;font-weight:750;border:1px solid transparent;
+  border-radius:7px;padding:6px 8px;line-height:1.35;
+  box-shadow:0 1px 3px #00000015;
+}
+#calendarSection .simple-calendar-day .simple-day-warning{background:#fce8d7;color:#8c4518}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -1739,34 +1747,84 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
  const manual=(window.manualAbsences||[]).filter(a=>a.absence_date===date);
  const leave=(window.calendarLeaves||[]).filter(l=>l.status==='approved'&&date>=l.start_date&&date<=l.end_date);
  const recovery=(window.approvedAbsences||[]).filter(a=>a.date===date);
- const names=[...new Set([...manual.map(a=>nm(a.employee_id)),...leave.map(l=>l.profiles?.full_name||nm(l.user_id)),...recovery.map(a=>nm(a.user_id))])];
- const offers=(window.manualReplacementOffers||[]).filter(o=>o.work_date===date&&o.status==='approved');
- const assigned=(window.managerAssignments||[]).filter(a=>a.work_date===date&&a.response_status==='accepted');
- const covers=(typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.saturday_date===date&&x.status==='approved');
- const events=[];
- if(sunday)events.push({text:'Fermé',kind:'closed'});
- else if(holiday)events.push({text:'Jour férié',kind:'closed'});
- if(names.length){
-  for(const name of names.slice(0,2))events.push({text:name+' absent'+(name.endsWith('e')?'e':''),kind:'absence'});
-  if(names.length>2)events.push({text:'+'+(names.length-2)+' autre(s) absence(s)',kind:'neutral'});
+ const names=[...new Set([
+   ...manual.map(a=>nm(a.employee_id)),
+   ...leave.map(l=>l.profiles?.full_name||nm(l.user_id)),
+   ...recovery.map(a=>nm(a.user_id))
+ ].filter(Boolean))];
+ // Toujours reprendre la couleur attribuée au salarié dans le reste du planning.
+ const replacementEntries=[];
+ const addReplacement=(name,status)=>{
+   if(!name)return;
+   const key=String(name).toLocaleLowerCase('fr');
+   if(!replacementEntries.some(r=>r.name.toLocaleLowerCase('fr')===key)){
+     replacementEntries.push({name:String(name),confirmed:status==='approved'});
+   } else if(status==='approved'){
+     replacementEntries.find(r=>r.name.toLocaleLowerCase('fr')===key).confirmed=true;
+   }
+ };
+ for(const o of (window.manualReplacementOffers||[])){
+   if(o.work_date!==date)continue;
+   if(o.status==='approved')addReplacement(nm(o.replacement_user_id),'approved');
+   else if(o.status==='pending'&&(isManagementUser()||o.replacement_user_id===user?.id))addReplacement(nm(o.replacement_user_id),'pending');
  }
- if(offers.length||assigned.length||covers.length)events.push({text:'✓ Remplacement prévu',kind:'replacement'});
- if(!sunday&&!holiday&&new Date(date+'T12:00:00').getDay()===6)events.push({text:'Samedi ouvert',kind:'neutral'});
+ for(const a of (window.managerAssignments||[])){
+   if(a.work_date!==date)continue;
+   if(a.response_status==='accepted')addReplacement(nm(a.replacement_user_id),'approved');
+   else if(a.response_status==='pending'&&(isManagementUser()||a.replacement_user_id===user?.id))addReplacement(nm(a.replacement_user_id),'pending');
+ }
+ for(const c of (typeof satCovers!=='undefined'?satCovers:[])){
+   if(c.saturday_date===date&&c.volunteer_id&&c.status==='approved')addReplacement(nm(c.volunteer_id),'approved');
+ }
+ for(const l of leave){
+   for(const r of l.replacements||[]){
+     if(r.confirmed_at)addReplacement(r.profiles?.full_name||nm(r.replacement_user_id),'approved');
+     else if(isManagementUser()||r.replacement_user_id===user?.id||l.user_id===user?.id)
+       addReplacement(r.profiles?.full_name||nm(r.replacement_user_id),'pending');
+   }
+ }
+ const badges=[];
+ if(sunday)badges.push({text:'Fermé',kind:'closed'});
+ else if(holiday)badges.push({text:'Jour férié',kind:'closed'});
+ for(const name of names)badges.push({text:name+' absent'+(name.endsWith('e')?'e':''),kind:'employee',name});
+ for(const entry of replacementEntries){
+   badges.push({text:(entry.confirmed?'✓ ':'⏳ ')+entry.name+(entry.confirmed?' remplace':' proposé'),kind:'employee',name:entry.name});
+ }
  if(tab==='replacement'&&!sunday&&!holiday){
    const canOffer=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id)
-      ||(window.calendarLeaves||[]).some(l=>l.status==='approved'&&l.user_id!==user?.id&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
+     ||(window.calendarLeaves||[]).some(l=>l.status==='approved'&&l.user_id!==user?.id&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
    const staffing=replacementStaffingLevel(date);
-   if(canOffer)events.push({text:'🤝 À remplacer',kind:'replacement'});
-   if(staffing?.minimum===0)events.push({text:'Prioritaire',kind:'absence'});
-   else if(staffing?.minimum===1)events.push({text:'Effectif réduit',kind:'neutral'});
+   if(canOffer)badges.push({text:'Remplacement à proposer',kind:'neutral'});
+   if(staffing?.minimum===0)badges.push({text:'Effectif insuffisant',kind:'warning'});
+   else if(staffing?.minimum===1)badges.push({text:'Effectif réduit',kind:'neutral'});
  }
- const concise=tab==='replacement'
-   ? [...events.filter(x=>x.kind==='absence'),...events.filter(x=>x.kind==='replacement'),...events.filter(x=>x.kind==='neutral')].slice(0,3)
-   : events.slice(0,3);
- for(const info of concise){
-   const badge=document.createElement('span');badge.className='simple-day-pill simple-day-'+info.kind;
-   badge.textContent=info.text;cell.insertBefore(badge,details);
+ if(!sunday&&!holiday&&new Date(date+'T12:00:00').getDay()===6)
+   badges.push({text:'Samedi ouvert',kind:'neutral'});
+ const maxBadges=3;
+ for(const info of badges.slice(0,maxBadges)){
+   const badge=document.createElement('span');
+   badge.className='simple-day-pill simple-day-'+info.kind;
+   badge.textContent=info.text;
+   if(info.kind==='employee'){
+     badge.style.backgroundColor=employeeColor(info.name);
+     badge.style.color='#fff';
+     badge.style.borderColor=employeeColor(info.name);
+     badge.title='Couleur de '+info.name;
+   }
+   cell.insertBefore(badge,details);
  }
+ if(badges.length>maxBadges){
+   const extra=document.createElement('span');
+   extra.className='simple-day-pill simple-day-neutral';
+   extra.textContent='+'+(badges.length-maxBadges)+' détail(s)';
+   cell.insertBefore(extra,details);
+ }
+ if(names.length===1&&!sunday&&!holiday){
+   const color=employeeColor(names[0]);
+   cell.style.setProperty('background', 'color-mix(in srgb, '+color+' 10%, white)', 'important');
+   cell.style.setProperty('border-left', '4px solid '+color, 'important');
+ }
+ const events=badges;
  const hasDetails=details.children.length>0||!!originalClick||events.length>0;
  if(!hasDetails)return;
  cell.classList.add('calendar-clickable');
