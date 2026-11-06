@@ -1145,6 +1145,7 @@ function replacementFreeWindows(date,employeeId){
  return windows.map(([start,end])=>({start:clock(start),end:clock(end)}));
 }
 async function showManagerAssignInline(cell,targetId,date,isManual){
+ if(new Date(date+'T12:00:00').getDay()===0){notice('La pharmacie est fermée le dimanche : aucune affectation possible.',true);return;}
  document.querySelectorAll('.replacement-inline').forEach(x=>x.remove());
  const box=document.createElement('div');box.className='replacement-inline';box.style.cssText='background:white;color:#18312b;padding:12px;border:2px solid #92400e;border-radius:9px;margin-top:6px;position:relative;z-index:5';
  const title=document.createElement('strong');title.textContent='Direction · Affecter un remplaçant le '+fmt(date);box.appendChild(title);
@@ -1168,6 +1169,7 @@ async function showManagerAssignInline(cell,targetId,date,isManual){
  const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuler';cancel.style.marginLeft='8px';cancel.onclick=e=>{e.stopPropagation();box.remove()};box.appendChild(cancel);cell.appendChild(box);
 }
 function showReplacementInline(cell,leaveId,date,isManual=false){
+ if(new Date(date+'T12:00:00').getDay()===0){notice('La pharmacie est fermée le dimanche : aucun remplacement possible.',true);return;}
  document.querySelectorAll('.replacement-inline').forEach(x=>x.remove());
  const box=document.createElement('div');box.className='replacement-inline';box.style.cssText='background:#fff;color:#172b2a;border:1px solid #a6b4b0;border-radius:8px;padding:12px;margin-top:5px;position:relative;z-index:5';
  const title=document.createElement('strong');title.textContent='Remplacement du '+fmt(date);box.appendChild(title);
@@ -1253,6 +1255,7 @@ cell.appendChild(number);
 
 const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;const sunday=new Date(year,month,day).getDay()===0;const holiday=holidayName(date);const vacation=holidayCalendarLabel(date);
 if(sunday){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title='Pharmacie fermée le dimanche'}else if(holiday){cell.title='Jour férié — fermeture à confirmer : '+holiday}
+if(tab==='replacement'&&sunday){const closed=document.createElement('div');closed.className='calendar-event';closed.style.cssText='background:#e5e7eb;color:#667085;font-size:12px;padding:5px;margin-top:8px;border-radius:6px';closed.textContent='Fermé · aucun remplacement';cell.appendChild(closed);grid.appendChild(cell);continue;}
 if(holiday){const flag=document.createElement('div');flag.className='calendar-holiday';flag.textContent='⚑ '+holiday;cell.appendChild(flag);if(tab==='request'){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title='Jour férié : congé non sélectionnable'}}
 if(vacation){const tag=document.createElement('div');tag.className='calendar-school';tag.textContent=vacation;cell.appendChild(tag)}
 if(tab==='overview'&&['owner','admin'].includes(profile?.role)){cell.classList.add('calendar-clickable');cell.title='Signaler une absence le '+date;cell.onclick=()=>openManualAbsencePicker(date)}
