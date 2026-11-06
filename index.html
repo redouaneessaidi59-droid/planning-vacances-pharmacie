@@ -429,6 +429,31 @@ tr:nth-child(even) td{background:#fafcfb}
   box-shadow:0 1px 3px #00000015;
 }
 #calendarSection .simple-calendar-day .simple-day-warning{background:#fce8d7;color:#8c4518}
+
+/* Samedis : détails et formulaires dans de grandes fenêtres */
+.saturday-action-dialog{border:0;padding:0;border-radius:18px;background:#fff;color:#193e30;width:min(94vw,720px);max-height:90vh;overflow-y:auto;box-shadow:0 24px 90px #10261b66}
+.saturday-action-dialog::backdrop{background:#081d14a6}
+.saturday-dialog-header{position:sticky;top:0;z-index:5;padding:19px 23px;display:flex;justify-content:space-between;align-items:center;gap:15px;background:#edf6f0;border-bottom:1px solid #d1e3d5}
+.saturday-dialog-header h2{margin:0;font-size:23px;color:#17432e;line-height:1.3}
+.saturday-dialog-header p{margin:5px 0 0;font-size:15px;font-weight:700;color:#466450}
+.saturday-dialog-header button{flex-shrink:0}
+.saturday-dialog-body{padding:22px 24px}
+.saturday-dialog-lead{font-size:16px;line-height:1.6;color:#385b46;margin:0 0 18px}
+.saturday-dialog-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:17px}
+.saturday-dialog-actions button{font-size:15px;min-height:45px}
+.saturday-slot-choices{display:grid;gap:10px}
+.saturday-slot-option{display:flex;align-items:center;gap:12px;padding:14px 15px;border:1.5px solid #cbded0;border-radius:10px;background:#f8fbf9;font-size:16px}
+.saturday-slot-option input{width:19px;height:19px;min-height:auto}
+.saturday-main-action{margin-top:18px}
+.saturday-summary-day{min-height:125px!important}
+.saturday-dialog-body .calendar-hidden-details[hidden]{display:none!important}
+.saturday-dialog-body .calendar-hidden-details{display:grid;gap:10px}
+.saturday-dialog-body .calendar-hidden-details .calendar-event{display:block!important;font-size:15px!important;line-height:1.55;padding:10px!important;border-radius:9px}
+.saturday-dialog-body .calendar-hidden-details .calendar-saturday-hours{display:block!important;font-size:15px}
+.saturday-dialog-body .calendar-hidden-details button{font-size:14px!important;min-height:42px!important;padding:10px 14px}
+.saturday-dialog-body #satSwapHiddenInputs{display:block}
+.saturday-dialog-body #satSwapHiddenInputs .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:650px){.saturday-action-dialog{width:96vw;max-height:92vh}.saturday-dialog-header{padding:14px;flex-wrap:wrap}.saturday-dialog-header h2{font-size:20px}.saturday-dialog-body{padding:16px}.saturday-dialog-body #satSwapHiddenInputs .grid{grid-template-columns:1fr}.saturday-dialog-actions button{width:100%}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -1480,17 +1505,16 @@ async function submitSaturdayCoverAction(id,action,mode){
 }
 
 $('openSaturdaySwap').onclick=()=>{
+ const form=$('satSwapHiddenInputs');
+ const anchor=document.createComment('saturday-exchange-original-position');
+ form.parentNode.insertBefore(anchor,form);
  const {dialog,body}=openSaturdayDialog('🔄 Échanger ou faire remplacer mon samedi','Choisis ton samedi, le collègue concerné et les modalités.');
- const form=$('satSwapHiddenInputs');form.classList.remove('hidden');body.appendChild(form);
- const send=$('satSend');
- const onClose=()=>{form.classList.add('hidden');$('saturdays').insertBefore(form,$('satRequests').previousElementSibling);dialog.remove();};
- // Conserver la même instance des champs et leurs gestionnaires.
- dialog.addEventListener('close',onClose,{once:true});
- const cancel=document.createElement('button');cancel.textContent='Annuler';cancel.className='secondary';cancel.type='button';cancel.onclick=()=>dialog.close();
- const footer=document.createElement('div');footer.className='saturday-dialog-actions';footer.appendChild(cancel);form.appendChild(footer);
- const previous=send.onclick;
- // Le bouton de validation existant conserve son traitement Supabase.
- send.addEventListener('click',()=>{setTimeout(()=>{if(!send.disabled&&dialog.open)dialog.close()},200)},{once:true});
+ form.classList.remove('hidden');body.appendChild(form);
+ const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annuler';cancel.className='secondary';
+ cancel.onclick=()=>dialog.close();form.appendChild(cancel);
+ dialog.addEventListener('close',()=>{
+   form.classList.add('hidden');cancel.remove();anchor.replaceWith(form);
+ },{once:true});
 };
 $('satMode').onchange=()=>show('satExchangeWrap',$('satMode').value==='exchange');
 
@@ -1499,9 +1523,18 @@ $('satSend').onclick=async()=>{
  if(!date||!recipient||mode==='exchange'&&!exchange){notice('Sélectionne les samedis et le collègue.',true);return}
  if(exchange&&sats.find(x=>x.saturday_date===exchange)?.user_id!==recipient){notice('Le samedi proposé doit appartenir au collègue choisi.',true);return}
  const {error}=await sb.rpc('request_saturday_swap',{p_saturday_date:date,p_recipient_id:recipient,p_mode:mode,p_exchange_date:exchange,p_compensation:$('satComp').value});
- if(error)msgError(error);else{notice('Demande transmise au collègue.');renderSaturdays()}
+ if(error)msgError(error);else{document.querySelector('dialog.saturday-action-dialog[open]')?.close();notice('Demande transmise au collègue.');renderSaturdays()}
 };
-window.answerSaturday=async(id,accept)=>{const {error}=await sb.rpc('decide_saturday_swap',{p_id:id,p_accept:accept});if(error)msgError(error);else{notice('Décision enregistrée.');renderSaturdays()}};
+window.answerSaturday=async(id,accept)=>{
+ const swap=(swaps||[]).find(x=>x.id===id);
+ const {dialog,body}=openSaturdayDialog(accept?'✓ Accepter cet échange':'✕ Refuser cet échange',
+ swap?'Samedi '+fmt(swap.saturday_date)+' · '+nm(swap.requester_id)+' ↔ '+nm(swap.recipient_id):'');
+ const info=document.createElement('p');info.className='saturday-dialog-lead';info.textContent='Souhaites-tu confirmer cette décision ?';body.appendChild(info);
+ const actions=document.createElement('div');actions.className='saturday-dialog-actions';
+ const yes=document.createElement('button');yes.textContent=accept?'Confirmer l’acceptation':'Confirmer le refus';if(!accept)yes.className='danger';
+ yes.onclick=async()=>{yes.disabled=true;const {error}=await sb.rpc('decide_saturday_swap',{p_id:id,p_accept:accept});if(error){msgError(error);yes.disabled=false;return}dialog.close();notice('Décision enregistrée.');await renderSaturdays()};
+ const no=document.createElement('button');no.textContent='Retour';no.className='secondary';no.onclick=()=>dialog.close();actions.append(yes,no);body.appendChild(actions);
+};
 async function renderMessages(){
  try{
  await getTeam();const {data,error}=await sb.from('direct_messages').select('*').order('created_at');
@@ -1780,6 +1813,42 @@ function openReplacementChoices(cell,date){
  }
  content.append(head,list);dialog.appendChild(content);document.body.appendChild(dialog);
  dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
+}
+
+function formatSaturdayCalendarDay(cell,date){
+ if(tab!=='saturdays'||new Date(date+'T12:00:00').getDay()!==6)return;
+ const number=cell.querySelector(':scope > strong');
+ const detail=document.createElement('div');detail.className='calendar-hidden-details';detail.hidden=true;
+ for(const child of [...cell.children])if(child!==number)detail.appendChild(child);
+ cell.appendChild(detail);
+ cell.classList.add('simple-calendar-day','calendar-clickable','saturday-summary-day');
+ const shifts=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);
+ const requests=(typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.saturday_date===date&&['open','pending_manager','approved'].includes(x.status));
+ const summary=(text,name)=>{
+  const span=document.createElement('span');span.className='simple-day-pill '+(name?'simple-day-employee':'simple-day-neutral');span.textContent=text;
+  if(name){span.style.backgroundColor=employeeColor(name);span.style.color='#fff';span.style.borderColor=employeeColor(name)}
+  cell.insertBefore(span,detail);
+ };
+ for(const item of shifts.slice(0,2))summary(nm(item.user_id)+' · de garde',nm(item.user_id));
+ if(requests.some(x=>x.status==='open'))summary('🤝 Remplaçant recherché');
+ else if(requests.some(x=>x.status==='pending_manager'))summary('⏳ Validation attendue');
+ else if(requests.some(x=>x.status==='approved'))summary('✓ Remplacement validé');
+ if(shifts.length>2)summary('+'+(shifts.length-2)+' autres');
+ cell.title='Voir les détails du samedi '+fmt(date);
+ cell.setAttribute('role','button');cell.setAttribute('tabindex','0');
+ cell.setAttribute('aria-label','Gérer les remplacements du samedi '+fmt(date));
+ const open=()=>{
+  const {dialog,body}=openSaturdayDialog('📅 Gestion du samedi',new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+  const intro=document.createElement('p');intro.className='saturday-dialog-lead';intro.textContent='Retrouve les horaires, les affectations et les demandes de remplacement de cette journée.';body.appendChild(intro);
+  detail.hidden=false;body.appendChild(detail);
+  if(saturdayMyShifts(date).length){
+   const button=document.createElement('button');button.type='button';button.textContent='＋ Demander à être remplacé';button.className='saturday-main-action';
+   button.onclick=()=>{dialog.close();saturdaySlotMenu(cell,date)};body.appendChild(button);
+  }
+  dialog.addEventListener('close',()=>{detail.hidden=true;cell.appendChild(detail)},{once:true});
+ };
+ cell.onclick=e=>{if(e.target.closest('button,a,input,select'))return;open()};
+ cell.onkeydown=e=>{if(e.target===cell&&(e.key==='Enter'||e.key===' ')){e.preventDefault();open()}};
 }
 
 function formatMainCalendarSummary(cell,date,sunday,holiday){
@@ -2116,6 +2185,7 @@ for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===
  cell.appendChild(label);
 }
 formatMainCalendarSummary(cell,date,sunday,holiday);
+formatSaturdayCalendarDay(cell,date);
 grid.appendChild(cell);
   }
 }
