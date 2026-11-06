@@ -479,6 +479,37 @@ tr:nth-child(even) td{background:#fafcfb}
  outline:none!important;box-shadow:none!important;
 }
 #recCalendar .holiday-recovery-day small{color:#4b5563!important;font-weight:750;line-height:1.3}
+
+/* Affectation des congés depuis Gestion patron : sélection par jours, fenêtre large */
+.admin-direct-assignment{margin:18px 0 12px}
+.admin-direct-assignment>button{min-height:49px;font-size:16px;padding:12px 20px;background:#1d6a51;color:#fff}
+.admin-direct-assignment .admin-help{margin:7px 0 0;font-size:13px}
+.leave-assignment-dialog{width:min(96vw,1040px);max-height:93vh;overflow:auto;padding:0;border:0;border-radius:18px;color:#173d2b;background:#fff;box-shadow:0 24px 80px #081e155c}
+.leave-assignment-dialog::backdrop{background:#071e14a8}
+.leave-assign-header{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:20px 24px;background:#eaf5ef;border-bottom:1px solid #cadfd0;position:sticky;top:0;z-index:2}
+.leave-assign-header h2{margin:0;font-size:24px;color:#174a34}
+.leave-assign-header p{margin:7px 0 0;color:#446653;font-size:16px;font-weight:650}
+.leave-assign-intro{font-size:15px;line-height:1.6;color:#3c5949;padding:14px 24px 2px;margin:0}
+.leave-assign-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,.85fr);gap:20px;padding:18px 24px}
+.leave-assign-calendar-pane h3,.leave-assign-editor h3{font-size:18px;margin:0 0 13px}
+.leave-assign-days{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-height:56vh;overflow:auto;padding:2px}
+.leave-assign-day{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:6px;padding:12px 10px;min-height:82px;border-radius:10px;background:#f2f7f3!important;color:#1b5036!important;border:1.5px solid #bcd5c2!important;white-space:normal!important;line-height:1.3}
+.leave-assign-day strong{font-size:15px}
+.leave-assign-day small{font-size:12px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}
+.leave-assign-day.selected{outline:3px solid #267758!important;border-color:#267758!important}
+.leave-assign-day.assigned{background:#e0f3e5!important;border-color:#91c4a2!important}
+.leave-assign-day.leave-assign-off,.leave-assign-day.leave-assign-off:disabled{background:#e5e7eb!important;border-color:#ccd1d7!important;color:#58616b!important;opacity:1!important;cursor:not-allowed}
+.leave-assign-editor{padding:17px;background:#f8fbf9;border:1px solid #d6e4da;border-radius:13px;min-width:0;align-self:start}
+.leave-assign-editor label{display:block;font-size:14px;font-weight:700;margin:10px 0}
+.leave-assign-editor select,.leave-assign-editor input{display:block;width:100%;min-height:46px;margin-top:6px;font-size:16px;padding:10px;border:1.5px solid #b6d0bd;border-radius:9px}
+.leave-assign-times{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.leave-assign-availability{font-size:13px;line-height:1.5;color:#486652;background:#eaf4ed;border-radius:8px;padding:10px}
+.leave-assign-editor>button{width:100%;min-height:48px;margin-top:15px}
+.leave-assign-editor h4{font-size:14px;margin:20px 0 8px}
+.leave-assign-existing-row{border:1px solid #c4ddcc;padding:10px;border-radius:8px;background:#eaf7ee;font-size:13px;margin:7px 0;overflow-wrap:anywhere}
+.leave-assign-feedback{padding:0 24px 20px;color:#196541;font-size:15px;font-weight:700;min-height:25px}
+.leave-assign-feedback.error{color:#ad3535}
+@media(max-width:760px){.leave-assign-layout{grid-template-columns:1fr;padding:12px 14px}.leave-assign-header{padding:16px;flex-wrap:wrap}.leave-assign-header h2{font-size:20px}.leave-assign-intro{padding:12px 14px}.leave-assign-days{max-height:36vh;grid-template-columns:repeat(3,minmax(0,1fr))}.leave-assign-editor{padding:13px}.leave-assign-feedback{padding:0 14px 15px}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -1056,6 +1087,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
             <p class="admin-help">ℹ️ Aucun collègue ne s’est encore proposé pour remplacer ce salarié.</p>
           `}
 
+          <div class="admin-direct-assignment"><button type="button" onclick="openLeaveAssignmentDialog('${r.id}')">👤 Désigner un remplaçant</button><p class="admin-help">Choisir les jours, les salariés et les horaires dans une fenêtre dédiée. Le salarié sera informé dans son espace personnel.</p></div>
           <div class="actions admin-decision-actions">
             <button class="secondary" onclick="setReplacementRequirement('${r.id}',true)" ${r.replacement_required===true?'disabled':''}>${r.replacement_required===true?'✓ Recherche de remplaçant activée':'👥 Exiger un remplaçant'}</button>
             <button onclick="approveWithoutReplacement('${r.id}')">✓ Accepter sans remplaçant</button>
@@ -1108,6 +1140,116 @@ if (profile.role === 'owner' || profile.role === 'admin') {
       '<p class="muted">Les modalités de compensation sont réservées à Redouane.</p>';
   }
 }
+
+
+window.openLeaveAssignmentDialog=async leaveId=>{
+ if(!isManagementUser())return;
+ const request=(window.pendingAdminLeaveRequests||[]).find(x=>x.id===leaveId);
+ if(!request||request.status!=='pending'){notice('Demande de congés introuvable ou déjà traitée.',true);return}
+ await getTeam();
+ const dialog=document.createElement('dialog');dialog.className='leave-assignment-dialog';
+ const outer=document.createElement('div');outer.className='leave-assign-container';
+ const header=document.createElement('div');header.className='leave-assign-header';
+ const headText=document.createElement('div');
+ const heading=document.createElement('h2');heading.textContent='👥 Désigner un remplaçant';
+ const subtitle=document.createElement('p');subtitle.textContent=(request.profiles?.full_name||'Salarié')+' · du '+fmt(request.start_date)+' au '+fmt(request.end_date);
+ headText.append(heading,subtitle);
+ const close=document.createElement('button');close.className='secondary';close.type='button';close.textContent='✕ Fermer';close.onclick=()=>dialog.close();
+ header.append(headText,close);outer.appendChild(header);
+ const intro=document.createElement('p');intro.className='leave-assign-intro';
+ intro.textContent='1. Clique sur une date. 2. Choisis le salarié et ses horaires disponibles. 3. Enregistre. Recommence pour les autres journées à couvrir.';
+ outer.appendChild(intro);
+ const layout=document.createElement('div');layout.className='leave-assign-layout';outer.appendChild(layout);
+ const calendarPane=document.createElement('div');calendarPane.className='leave-assign-calendar-pane';
+ const calendarTitle=document.createElement('h3');calendarTitle.textContent='Jours de congés à couvrir';
+ calendarPane.appendChild(calendarTitle);
+ const daysGrid=document.createElement('div');daysGrid.className='leave-assign-days';calendarPane.appendChild(daysGrid);
+ const editor=document.createElement('div');editor.className='leave-assign-editor';layout.append(calendarPane,editor);
+ const status=document.createElement('p');status.className='leave-assign-feedback';status.setAttribute('aria-live','polite');outer.appendChild(status);
+ dialog.appendChild(outer);document.body.appendChild(dialog);
+ dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.onclick=e=>{if(e.target===dialog)dialog.close()};
+ let date=new Date(request.start_date+'T12:00:00'),endDate=new Date(request.end_date+'T12:00:00');
+ const dates=[];while(date<=endDate&&dates.length<370){dates.push(localISO(date));date.setDate(date.getDate()+1)}
+ const validDates=dates.filter(d=>new Date(d+'T12:00:00').getDay()!==0&&!holidayName(d));
+ let chosenDate=validDates[0]||null;
+ const people=team.filter(x=>x.id!==request.user_id).sort((a,b)=>a.full_name.localeCompare(b.full_name,'fr'));
+ const employee=document.createElement('select');employee.setAttribute('aria-label','Salarié désigné');
+ const defaultOpt=document.createElement('option');defaultOpt.value='';defaultOpt.textContent='— Choisir un salarié —';employee.appendChild(defaultOpt);
+ for(const person of people){const opt=document.createElement('option');opt.value=person.id;opt.textContent=person.full_name;employee.appendChild(opt)}
+ const start=document.createElement('input');start.type='time';start.setAttribute('aria-label','Heure de début');
+ const finish=document.createElement('input');finish.type='time';finish.setAttribute('aria-label','Heure de fin');
+ const mode=document.createElement('select');mode.innerHTML='<option value="recovery">Heures à récupérer</option><option value="paid">Heures à payer</option>';
+ const availability=document.createElement('p');availability.className='leave-assign-availability';
+ const existingList=document.createElement('div');existingList.className='leave-assign-existing';
+ const save=document.createElement('button');save.type='button';save.textContent='Enregistrer l’affectation';
+ const inputRow=document.createElement('div');inputRow.className='leave-assign-times';
+ const lab=(name,control)=>{const l=document.createElement('label');l.textContent=name;l.appendChild(control);return l};
+ const infoTitle=document.createElement('h3');editor.appendChild(infoTitle);
+ editor.appendChild(lab('Salarié désigné',employee));
+ inputRow.append(lab('De',start),lab('À',finish));editor.appendChild(inputRow);
+ editor.appendChild(availability);editor.appendChild(lab('Compensation confidentielle',mode));
+ editor.appendChild(save);
+ const existingHeading=document.createElement('h4');existingHeading.textContent='Affectations déjà enregistrées';editor.append(existingHeading,existingList);
+ const activeAssignments=day=>(window.managerAssignments||[]).filter(a=>a.target_type==='leave'&&a.target_id===leaveId&&a.work_date===day&&!a.cancelled_at);
+ const nameOf=id=>team.find(p=>p.id===id)?.full_name||nm(id);
+ const refreshAvailability=()=>{
+  const free=chosenDate&&employee.value?replacementFreeWindows(chosenDate,employee.value):null;
+  const conflicting=chosenDate&&employee.value&&(window.calendarLeaves||[]).some(l=>l.user_id===employee.value&&['pending','approved'].includes(l.status)&&chosenDate>=l.start_date&&chosenDate<=l.end_date);
+  if(!chosenDate){availability.textContent='Aucun jour ouvré à couvrir pour cette période.';save.disabled=true;return}
+  if(!employee.value){availability.textContent='Sélectionne un collègue pour voir ses horaires libres.';save.disabled=true;start.value='';finish.value='';return}
+  if(conflicting){availability.textContent='Ce salarié a déjà une demande de congés ou une absence ce jour.';save.disabled=true;start.value='';finish.value='';return}
+  if(free===null){availability.textContent='Planning habituel non renseigné pour ce salarié.';save.disabled=true;start.value='';finish.value='';return}
+  if(!free.length){availability.textContent='Aucun créneau libre pendant les horaires d’ouverture.';save.disabled=true;start.value='';finish.value='';return}
+  availability.textContent='Créneaux disponibles : '+free.map(x=>x.start+'–'+x.end).join(' · ');
+  start.value=free[0].start;finish.value=free[0].end;
+  save.disabled=false;
+ };
+ const render=()=>{
+  daysGrid.replaceChildren();
+  for(const d of dates){
+    const off=new Date(d+'T12:00:00').getDay()===0,holiday=holidayName(d),assigned=activeAssignments(d);
+    const button=document.createElement('button');button.type='button';
+    button.className='leave-assign-day'+(off||holiday?' leave-assign-off':'')+(chosenDate===d?' selected':'')+(assigned.length?' assigned':'');
+    button.disabled=off||!!holiday;
+    const dayLabel=document.createElement('strong');dayLabel.textContent=new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'});
+    const note=document.createElement('small');
+    note.textContent=holiday?'Jour férié : '+holiday:off?'Fermé':assigned.length?assigned.map(a=>nameOf(a.replacement_user_id)+' '+String(a.start_time).slice(0,5)+'–'+String(a.end_time).slice(0,5)).join(' · '):'À couvrir';
+    button.append(dayLabel,note);
+    if(!button.disabled)button.onclick=()=>{chosenDate=d;status.textContent='';render()};
+    daysGrid.appendChild(button);
+  }
+  infoTitle.textContent=chosenDate?'Remplacement du '+fmt(chosenDate):'Aucune date disponible';
+  existingList.replaceChildren();
+  if(chosenDate){
+   const entries=activeAssignments(chosenDate);
+   if(!entries.length){const none=document.createElement('p');none.className='hint';none.textContent='Aucune affectation pour cette date.';existingList.appendChild(none)}
+   for(const entry of entries){
+    const line=document.createElement('div');line.className='leave-assign-existing-row';
+    line.textContent=nameOf(entry.replacement_user_id)+' · '+String(entry.start_time).slice(0,5)+'–'+String(entry.end_time).slice(0,5)+' · '+(entry.response_status==='accepted'?'✓ Confirmé':entry.response_status==='refused'?'✕ Refusé':'⏳ Réponse attendue');
+    existingList.appendChild(line);
+   }
+  }
+  refreshAvailability();
+ };
+ employee.onchange=refreshAvailability;
+ save.onclick=async()=>{
+  if(!chosenDate||!employee.value||holidayName(chosenDate))return;
+  const free=replacementFreeWindows(chosenDate,employee.value);
+  if(!start.value||!finish.value||start.value>=finish.value||!free?.some(w=>start.value>=w.start&&finish.value<=w.end)){
+   status.textContent='Choisis un créneau entièrement libre et des horaires valides.';status.classList.add('error');return;
+  }
+  save.disabled=true;status.classList.remove('error');status.textContent='Enregistrement de l’affectation…';
+  const {error}=await sb.rpc('assign_manager_replacement',{p_type:'leave',p_target:leaveId,p_user:employee.value,p_date:chosenDate,p_start:start.value,p_end:finish.value,p_mode:mode.value});
+  if(error){status.textContent=error.message;status.classList.add('error');save.disabled=false;return}
+  const savedDate=chosenDate;
+  await loadManagerAssignments();
+  status.textContent='✓ '+nameOf(employee.value)+' désigné(e) pour le '+fmt(savedDate)+'. L’affectation est visible dans son espace personnel.';
+  status.classList.remove('error');
+  render();
+  // Ne pas fermer la fenêtre : on peut affecter les autres jours immédiatement.
+ };
+ render();dialog.showModal();
+};
 
 window.setReplacementRequirement = async (id, required) => {
   const { error } = await sb
