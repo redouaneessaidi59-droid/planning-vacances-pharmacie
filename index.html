@@ -1125,6 +1125,26 @@ for(const cover of (typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.sat
  event.dataset.coverId=cover.id;
  cell.appendChild(event);
 }}
+if(['overview','request','replacement'].includes(tab)){
+ const absences=(window.manualAbsences||[]).filter(a=>a.absence_date===date);
+ if(absences.length){
+  const colors=[...new Set(absences.map(a=>employeeColor(nm(a.employee_id))))];
+  cell.style.background=colors.length===1?colors[0]:'linear-gradient(135deg,'+colors.map((c,i)=>c+' '+(i*100/colors.length)+'%,'+c+' '+((i+1)*100/colors.length)+'%').join(',')+')';
+  cell.style.borderColor=colors[0];cell.style.color='white';number.style.color='white';
+  cell.title=absences.map(a=>nm(a.employee_id)).join(', ')+' — absence signalée';
+  for(const absence of absences){
+   const e=document.createElement('div');e.className='calendar-event calendar-approved';
+   e.style.background=employeeColor(nm(absence.employee_id));e.style.color='white';
+   e.textContent=nm(absence.employee_id)+' · Absent';
+   if(['owner','admin'].includes(profile?.role)){
+    e.style.cursor='pointer';e.title='Retirer cette absence';
+    e.onclick=ev=>{ev.stopPropagation();removeManualAbsence(absence)};
+   }
+   cell.appendChild(e);
+  }
+  if(tab==='overview'&&['owner','admin'].includes(profile?.role))cell.onclick=()=>openManualAbsencePicker(date);
+ }
+}
 grid.appendChild(cell);
   }
 }
