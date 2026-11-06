@@ -613,6 +613,7 @@ async function renderAdmin() {
       const normalized=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
       if(normalized==='severine')return 'En arrêt — accident de la vie privée';
       if(normalized==='fanaella')return 'En congé maternité';
+      if(normalized==='mohamed')return 'Contrat spécial';
       return null;
     };
     const employees=[...(bs||[])].sort((a,b)=>Number(!!absentReason(a.profiles?.full_name))-Number(!!absentReason(b.profiles?.full_name)));
@@ -631,7 +632,7 @@ async function renderAdmin() {
         </div>
         <div class="actions"><button onclick="saveBalance('${b.user_id}')">Enregistrer les compteurs</button></div>`;
       return reason
-        ? `<details class="item absent-balance-card"><summary><strong>${esc(b.profiles?.full_name||'Salariée')}</strong><span class="absent-label">Absente</span><span class="absent-reason">${esc(reason)}</span><span class="absent-hint">Afficher les compteurs</span></summary><div class="absent-balance-content">${fields}</div></details>`
+        ? `<details class="item absent-balance-card"><summary><strong>${esc(b.profiles?.full_name||'Salariée')}</strong><span class="absent-label">${reason==='Contrat spécial'?'Contrat spécial':'Absente'}</span><span class="absent-reason">${reason==='Contrat spécial'?'Compteurs accessibles':esc(reason)}</span><span class="absent-hint">Afficher les compteurs</span></summary><div class="absent-balance-content">${fields}</div></details>`
         : `<div class="item"><strong>${esc(b.profiles?.full_name||'Salarié')}</strong>${fields}</div>`;
     }).join('');
   }
