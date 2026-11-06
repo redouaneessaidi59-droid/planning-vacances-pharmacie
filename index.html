@@ -109,7 +109,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
  .schedule-lane{min-width:105px}
  .schedule-track{width:34px}
 }
-#actionFeedback{border:0;border-radius:18px;padding:0;width:min(92vw,430px);max-width:430px;box-shadow:0 22px 80px #0005;color:#18312b;background:#fff}#actionFeedback::backdrop{background:rgba(11,30,25,.62)}.feedback-content{text-align:center;padding:30px 25px 26px}.feedback-content h2{margin:8px 0 12px;font-size:1.4rem}.feedback-content p{font-size:1.05rem;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}.feedback-symbol{display:grid;place-items:center;width:56px;height:56px;margin:auto;border-radius:50%;background:#e4f5e9;color:#16733d;font-size:30px;font-weight:bold}#actionFeedback[data-error="true"] .feedback-symbol{background:#fde9e7;color:#b42318}#actionFeedbackOk{min-width:130px;margin-top:14px;font-size:1rem}</style>
+#actionFeedback{border:0;border-radius:18px;padding:0;width:min(92vw,430px);max-width:430px;box-shadow:0 22px 80px #0005;color:#18312b;background:#fff}#actionFeedback::backdrop{background:rgba(11,30,25,.62)}.feedback-content{text-align:center;padding:30px 25px 26px}.feedback-content h2{margin:8px 0 12px;font-size:1.4rem}.feedback-content p{font-size:1.05rem;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}.feedback-symbol{display:grid;place-items:center;width:56px;height:56px;margin:auto;border-radius:50%;background:#e4f5e9;color:#16733d;font-size:30px;font-weight:bold}#actionFeedback[data-error="true"] .feedback-symbol{background:#fde9e7;color:#b42318}#actionFeedbackOk{min-width:130px;margin-top:14px;font-size:1rem}.staffing-legend{display:flex;gap:10px 20px;flex-wrap:wrap;margin:12px 0 4px;padding:10px;background:#f4f7f5;border-radius:9px;font-size:13px;color:#20332b}.staffing-legend span{display:inline-flex;align-items:center;gap:7px}.staffing-dot{display:inline-block;flex:none;width:13px;height:13px;border-radius:50%;border:1px solid #0002;vertical-align:middle}.staffing-dot.green{background:#1e9e58}.staffing-dot.yellow{background:#f3b52c}.staffing-dot.red{background:#df3b3b}.staffing-day-indicator{display:inline-flex;align-items:center;gap:5px;margin:4px 0;font-size:10px;font-weight:700;color:#22372b;background:#fff;border-radius:12px;padding:3px 6px}.staffing-day-indicator .staffing-dot{width:10px;height:10px}</style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
 <body>
@@ -156,7 +156,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
     <h2 id="calendarTitle">Calendrier des congés</h2>
     <button type="button" id="calendarNext">❯</button>
   </div>
-  <div id="holidayReminder" class="holiday-reminder" aria-live="polite"></div><div id="calendarGrid"></div>
+  <div id="holidayReminder" class="holiday-reminder" aria-live="polite"></div>
+<div id="staffingLegend" class="staffing-legend" aria-label="Légende des effectifs">
+ <span><i class="staffing-dot green"></i> Vert : couverture suffisante</span>
+ <span><i class="staffing-dot yellow"></i> Jaune : effectif réduit</span>
+ <span><i class="staffing-dot red"></i> Rouge : aucun salarié disponible</span>
+</div>
+<div id="calendarGrid"></div>
 </section>
 <section id="overview" class="card"><p class="hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>Demandes de l'équipe</h2><p class="muted">Les dates et le statut sont visibles par l'équipe. Les modalités de rémunération restent réservées à la direction.</p><div id="requestsList">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
@@ -1106,7 +1112,7 @@ function renderCalendar() {
     year: 'numeric'
   });
 
-  grid.innerHTML = '';const reminder=document.getElementById('holidayReminder');if(reminder){const today=localISO(new Date());const upcoming=schoolHolidaysB.find(x=>x[1]>=today);reminder.textContent=upcoming?(today>=upcoming[0]?'🏖️ Vacances scolaires en cours : '+upcoming[2]:'📣 Pensez à préparer vos congés : prochaines vacances '+upcoming[2]+' à partir du '+new Date(upcoming[0]+'T12:00:00').toLocaleDateString('fr-FR')):'';}
+  grid.innerHTML = '';const legend=$('staffingLegend');if(legend)legend.style.display=tab==='replacement'?'flex':'none';const reminder=document.getElementById('holidayReminder');if(reminder){const today=localISO(new Date());const upcoming=schoolHolidaysB.find(x=>x[1]>=today);reminder.textContent=upcoming?(today>=upcoming[0]?'🏖️ Vacances scolaires en cours : '+upcoming[2]:'📣 Pensez à préparer vos congés : prochaines vacances '+upcoming[2]+' à partir du '+new Date(upcoming[0]+'T12:00:00').toLocaleDateString('fr-FR')):'';}
 
   ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].forEach(day => {
     const header = document.createElement('div');
@@ -1139,6 +1145,14 @@ if(tab==='overview'&&['owner','admin'].includes(profile?.role)){cell.classList.a
 if(tab==='request'&&!sunday&&!holiday){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&!sunday&&!holiday&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';};
 
 if(tab==='replacement'&&!sunday){
+ const staffingStatus=replacementStaffingLevel(date);
+ if(staffingStatus){
+  const level=staffingStatus.minimum===0?'red':staffingStatus.minimum===1?'yellow':'green';
+  const indicator=document.createElement('div');indicator.className='staffing-day-indicator';
+  const dot=document.createElement('i');dot.className='staffing-dot '+level;dot.setAttribute('aria-hidden','true');
+  const caption=document.createElement('span');caption.textContent=level==='red'?'Aucun salarié':level==='yellow'?'Effectif réduit':'Couverture OK';
+  indicator.append(dot,caption);indicator.title='Effectif minimal : '+staffingStatus.minimum+' · '+staffingStatus.periods.join(' ; ');cell.appendChild(indicator);
+ }
  const needsToday=(window.calendarLeaves||[]).some(l=>l.user_id!==user?.id&&l.status==='pending'&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date)||(window.manualAbsences||[]).some(a=>a.employee_id!==user?.id&&a.absence_date===date);
  if(needsToday){
   const staffing=replacementStaffingLevel(date);
