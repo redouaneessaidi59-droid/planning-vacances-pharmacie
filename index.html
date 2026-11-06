@@ -752,7 +752,7 @@ $('availSave').onclick=async()=>{
 };
 window.delAvailability=async id=>{const {error}=await sb.from('replacement_availability').delete().eq('id',id).eq('user_id',user.id);if(error)msgError(error);else renderAvailability()};
 async function renderReplacementNeeds(){
- const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='pending'&&x.user_id!==user?.id&&!x.replacements?.length);
+ const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='approved'&&x.user_id!==user?.id&&!x.replacements?.length);
  const manual=(window.manualAbsences||[]).filter(a=>a.employee_id!==user?.id);
  const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
  if(recoveries.error){$('replacementNeeds').textContent='Impossible de charger les récupérations : '+recoveries.error.message;return}
@@ -1095,7 +1095,7 @@ function showReplacementInline(cell,leaveId,date,isManual=false){
   const info=document.createElement('p');info.className='hint';
   info.textContent=free===null?'Planning habituel non renseigné : contacte la direction.':free.length?'Créneaux disponibles hors de ton planning habituel : '+free.map(x=>x.start+'–'+x.end).join(' · '):'Aucun créneau libre pendant les heures d’ouverture : tu es déjà planifié.';
   body.appendChild(info);
-  const start=field('Heure de début',free?.[0]?.start||'09:00'),end=field('Heure de fin',free?.[0]?.end||'19:00');
+  const start=field('Heure de début',free?.[0]?.start||'09:00'),end=field('Heure de fin',free?.[0]?.end||'19:30');
   btn('Confirmer ces horaires',()=>{if(!start.value||!end.value||start.value>=end.value){notice('Indique des horaires valides.',true);return}if(!free||!free.some(x=>start.value>=x.start&&end.value<=x.end)){notice('Remplacement impossible : choisis un créneau entièrement libre, sans chevauchement avec ton planning habituel.',true);return}compStep(start.value,end.value)});
   btn('Annuler',()=>box.remove(),true);
  };
