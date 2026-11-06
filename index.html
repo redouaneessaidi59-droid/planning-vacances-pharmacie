@@ -1026,11 +1026,11 @@ $('clearRanges').onclick=()=>{leaveRanges=[];pendingRangeStart=null;rangeMode=fa
 updateRangeSummary();
 let calendarDate = new Date();
 
-function saturdayStaffOverrides(date){const day=new Date(date+'T12:00:00').getDay();if(day!==6)return [];const openAfternoon=((Math.round((new Date(date+'T12:00:00')-new Date('2026-11-07T12:00:00'))/604800000)%2)+2)%2===0;return (schedulePeople||[]).flatMap(p=>{const n=String(p.full_name||'').toLowerCase();if(n.includes('essaidi')||n.includes('redouane'))return [{name:p.full_name,start:'09:00',end:'12:30'}];if(n.includes('mohamed'))return [{name:p.full_name,start:'09:00',end:'12:30'},...(openAfternoon?[{name:p.full_name,start:'14:00',end:'19:00'}]:[])];return []})}
+function saturdayStaffOverrides(date){const day=new Date(date+'T12:00:00').getDay();if(day!==6)return [];const openAfternoon=((Math.round((new Date(date+'T12:00:00')-new Date('2026-11-07T12:00:00'))/604800000)%2)+2)%2===0;return (schedulePeople||[]).flatMap(p=>{const n=String(p.full_name||'').toLowerCase();if(n.includes('essaidi')||n.includes('redouane'))return [{name:p.full_name,start:'09:00',end:'12:30'}];if(n.includes('mohamed'))return [{name:p.full_name,start:'09:00',end:'12:30'},...(openAfternoon?[{name:p.full_name,start:'14:00',end:'19:00'}]:[])];if(n.includes('anissa'))return openAfternoon?[{name:p.full_name,start:'14:00',end:'19:00'}]:[];return []})}
 function scheduleBars(date){
  if(typeof schedulePeople==='undefined'||typeof scheduleVersions==='undefined'||typeof scheduleSlots==='undefined')return [];
  const weekday=new Date(date+'T12:00:00').getDay();const index=weekday===0?7:weekday;
- return [...(schedulePeople||[]).flatMap(p=>{const v=scheduleCurrent(p.id,date);if(!v)return[];return scheduleSlots.filter(x=>x.version_id===v.id&&Number(x.weekday)===index).map(x=>({name:p.full_name,start:String(x.start_time).slice(0,5),end:String(x.end_time).slice(0,5)}))}).filter(x=>!(index===6&&/essaidi|redouane|mohamed/i.test(x.name))),...saturdayStaffOverrides(date)];
+ return [...(schedulePeople||[]).flatMap(p=>{const v=scheduleCurrent(p.id,date);if(!v)return[];return scheduleSlots.filter(x=>x.version_id===v.id&&Number(x.weekday)===index).map(x=>({name:p.full_name,start:String(x.start_time).slice(0,5),end:String(x.end_time).slice(0,5)}))}).filter(x=>!(index===6&&/essaidi|redouane|mohamed|anissa/i.test(x.name))),...saturdayStaffOverrides(date)];
 }
 function remainingStaff(date){
  if(!schedulePeople.length||!scheduleVersions.length||!Array.isArray(window.approvedAbsences))return null;
@@ -1115,7 +1115,7 @@ function replacementBaseSlots(date,employeeId){
  const person=(schedulePeople||[]).find(p=>p.id===employeeId);
  if(!person)return null;
  const weekday=new Date(date+'T12:00:00').getDay();
- if(weekday===6&&/essaidi|redouane|mohamed/i.test(person.full_name)){
+ if(weekday===6&&/essaidi|redouane|mohamed|anissa/i.test(person.full_name)){
   return saturdayStaffOverrides(date).filter(x=>x.name===person.full_name);
  }
  const version=scheduleCurrent(employeeId,date);
