@@ -397,6 +397,10 @@ tr:nth-child(even) td{background:#fafcfb}
 .replacement-proposal-actions button{font-size:15px;min-height:47px;padding:12px 18px}
 #calendarGrid .replacement-short-summary{font-size:11px;font-weight:750;border:1px solid #b4dabb;border-radius:7px;padding:5px}
 @media(max-width:650px){.replacement-proposal-dialog{width:96vw;max-height:92vh}.replacement-proposal-heading{padding:16px;flex-wrap:wrap}.replacement-proposal-heading h2{font-size:20px}.replacement-proposal-intro{padding:0 16px}.replacement-proposal-body{padding:0 16px}.replacement-proposal-actions{padding:14px 16px 0}.replacement-proposal-actions button{flex:1 1 100%}}
+
+.replacement-choice-list{display:grid;gap:12px;padding:20px 24px 25px}
+.replacement-choice-list p{margin:0 0 5px;font-size:15px;color:#476350}
+.replacement-choice-list button{width:100%;text-align:left;font-size:16px;padding:15px 17px;min-height:54px}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -1666,6 +1670,32 @@ function showReplacementInline(cell,leaveId,date,isManual=false){
  timeStep();dialog.appendChild(box);document.body.appendChild(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
 }
 
+
+function openReplacementChoices(cell,date){
+ const manual=(window.manualAbsences||[]).filter(a=>a.absence_date===date&&a.employee_id!==user?.id)
+   .filter(a=>!(window.manualReplacementOffers||[]).some(o=>o.absence_id===a.id&&o.replacement_user_id===user?.id&&o.status!=='rejected'))
+   .map(a=>({id:a.id,manual:true,name:nm(a.employee_id)}));
+ const leave=(window.calendarLeaves||[]).filter(l=>l.user_id!==user?.id&&l.status==='approved'&&date>=l.start_date&&date<=l.end_date&&!l.replacements?.length)
+   .map(l=>({id:l.id,manual:false,name:l.profiles?.full_name||nm(l.user_id)}));
+ const available=[...manual,...leave];
+ if(!available.length)return;
+ if(available.length===1){showReplacementInline(cell,available[0].id,date,available[0].manual);return;}
+ const dialog=document.createElement('dialog');dialog.className='replacement-proposal-dialog';
+ const content=document.createElement('div');content.className='replacement-proposal-content';
+ const head=document.createElement('div');head.className='replacement-proposal-heading';
+ const h=document.createElement('h2');h.textContent='Qui souhaitez-vous remplacer ?';
+ const close=document.createElement('button');close.className='secondary';close.textContent='Fermer';close.onclick=()=>dialog.close();head.append(h,close);
+ const list=document.createElement('div');list.className='replacement-choice-list';
+ const info=document.createElement('p');info.textContent='Le '+fmt(date)+' · choisissez le collègue concerné.';list.appendChild(info);
+ for(const item of available){
+   const btn=document.createElement('button');btn.type='button';btn.className='secondary';btn.textContent='Remplacer '+item.name;
+   btn.onclick=()=>{dialog.close();showReplacementInline(cell,item.id,date,item.manual)};
+   list.appendChild(btn);
+ }
+ content.append(head,list);dialog.appendChild(content);document.body.appendChild(dialog);
+ dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
+}
+
 function formatMainCalendarSummary(cell,date,sunday,holiday){
  if(tab!=='overview')return;
  const originalClick=cell.onclick;
@@ -1930,6 +1960,15 @@ for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===
  cell.appendChild(label);
 }
 formatMainCalendarSummary(cell,date,sunday,holiday);
+if(tab==='replacement'&&!sunday&&!holiday){
+ const eligibleManual=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id);
+ const eligibleLeave=(window.calendarLeaves||[]).some(l=>l.user_id!==user?.id&&l.status==='approved'&&date>=l.start_date&&date<=l.end_date&&!l.replacements?.length);
+ if(eligibleManual||eligibleLeave){
+   cell.classList.add('calendar-clickable');
+   cell.title='Cliquer pour proposer un remplacement le '+fmt(date);
+   cell.onclick=e=>{if(e.target.closest('button,a,select,input,textarea'))return;openReplacementChoices(cell,date)};
+ }
+}
 grid.appendChild(cell);
   }
 }
