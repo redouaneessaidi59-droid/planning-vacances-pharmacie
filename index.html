@@ -144,6 +144,21 @@ input,select,textarea{font-size:16px}
 #allBalances label{line-height:1.45}
 #allBalances input{max-width:100%;border:1.5px solid #aebfb2}
 @media(max-width:650px){#admin{padding:17px}.admin-request-name{font-size:20px}.admin-request-dates{font-size:16px}#admin .admin-decision-actions button{width:100%}}
+
+/* Salariées temporairement absentes : cartes discrètes réservées à la gestion */
+#allBalances .absent-balance-card{padding:0!important;background:#f0f1f2!important;border:1px solid #d3d7d9!important;box-shadow:none!important;color:#505a60;overflow:hidden}
+.absent-balance-card summary{cursor:pointer;display:flex;align-items:center;gap:9px 13px;flex-wrap:wrap;padding:11px 14px;list-style:none;font-size:13px}
+.absent-balance-card summary::-webkit-details-marker{display:none}
+#allBalances .absent-balance-card summary>strong{font-size:14px;color:#4a5258}
+.absent-label{background:#dce0e3;color:#464d53;border-radius:6px;font-weight:700;padding:3px 8px;font-size:12px}
+.absent-reason{color:#505860;font-size:12px}
+.absent-hint{margin-left:auto;color:#47565d;font-size:12px;text-decoration:underline}
+.absent-balance-card[open] .absent-hint{font-size:0}
+.absent-balance-card[open] .absent-hint:after{content:"Masquer les compteurs";font-size:12px}
+.absent-balance-content{padding:10px 14px 15px;border-top:1px solid #d5dadd;background:#f6f7f8}
+#allBalances .absent-balance-content label{font-size:13px}
+#allBalances .absent-balance-content input{font-size:14px;padding:8px}
+#allBalances .absent-balance-content button{font-size:13px;min-height:36px;padding:8px 12px}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -545,24 +560,32 @@ async function renderAdmin() {
     $('allBalances').innerHTML =
       '<p class="muted">Modification des compteurs réservée aux responsables.</p>';
   } else {
-    $('allBalances').innerHTML = (bs || []).map(b => `
-      <div class="item">
-        <strong>${esc(b.profiles.full_name)}</strong>
+    // Deux salariées temporairement absentes restent accessibles en version compacte.
+    const absentReason = name => {
+      const normalized=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+      if(normalized==='severine')return 'En arrêt — accident de la vie privée';
+      if(normalized==='fanaella')return 'En congé maternité';
+      return null;
+    };
+    const employees=[...(bs||[])].sort((a,b)=>Number(!!absentReason(a.profiles?.full_name))-Number(!!absentReason(b.profiles?.full_name)));
+    $('allBalances').innerHTML = employees.map(b => {
+      const reason=absentReason(b.profiles?.full_name);
+      const fields=`
         <div class="grid">
           <div>
-            <label>Congés de l’année précédente (N-1) — jours</label><input type="number" step=".5" id="n1${b.user_id}" value="${b.leave_n1}"><label>Congés de l’année en cours (N) — jours</label>
-            <input type="number" step=".5" id="n${b.user_id}" value="${b.leave_n}">
+            <label for="n1${b.user_id}">Congés de l’année précédente (N-1) — jours</label><input type="number" step=".5" id="n1${b.user_id}" value="${b.leave_n1}">
+            <label for="n${b.user_id}">Congés de l’année en cours (N) — jours</label><input type="number" step=".5" id="n${b.user_id}" value="${b.leave_n}">
           </div>
           <div>
-            <label>Anciennes récupérations — jours (historique)</label>
+            <label for="r${b.user_id}">Anciennes récupérations — jours (historique)</label>
             <input type="number" step=".5" id="r${b.user_id}" value="${b.recovery_days}">
           </div>
         </div>
-        <div class="actions">
-          <button onclick="saveBalance('${b.user_id}')">Enregistrer les compteurs</button>
-        </div>
-      </div>
-    `).join('');
+        <div class="actions"><button onclick="saveBalance('${b.user_id}')">Enregistrer les compteurs</button></div>`;
+      return reason
+        ? `<details class="item absent-balance-card"><summary><strong>${esc(b.profiles?.full_name||'Salariée')}</strong><span class="absent-label">Absente</span><span class="absent-reason">${esc(reason)}</span><span class="absent-hint">Afficher les compteurs</span></summary><div class="absent-balance-content">${fields}</div></details>`
+        : `<div class="item"><strong>${esc(b.profiles?.full_name||'Salarié')}</strong>${fields}</div>`;
+    }).join('');
   }
 
  
