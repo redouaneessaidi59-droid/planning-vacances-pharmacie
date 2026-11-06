@@ -351,6 +351,7 @@ tr:nth-child(even) td{background:#fafcfb}
 #calendarSection .simple-day-closed{color:#59636d;font-weight:600;padding:3px 0}
 #calendarSection .simple-calendar-day.calendar-clickable:hover{background:#f4faf5!important;border-color:#4f9676!important}
 #calendarSection .calendar-hidden-details[hidden]{display:none!important}
+.calendar-ranking-details[hidden]{display:none!important}
 .calendar-ranking-details{margin-top:18px;background:#f7faf8;border:1px solid #d5e4d9;border-radius:13px}
 .calendar-ranking-details>summary{cursor:pointer;list-style:none;padding:14px 17px;color:#1e5138;font-size:15px;font-weight:750}
 .calendar-ranking-details>summary::-webkit-details-marker{display:none}
@@ -1719,6 +1720,7 @@ function renderCalendar() {
     year: 'numeric'
   });
 
+  const rankingDisclosure=document.querySelector('.calendar-ranking-details');if(rankingDisclosure){rankingDisclosure.hidden=!['overview','replacement','schedules'].includes(tab);if(tab!=='overview')rankingDisclosure.open=false;}
   grid.innerHTML = '';const legend=$('staffingLegend');if(legend)legend.style.display=tab==='replacement'?'flex':'none';const reminder=document.getElementById('holidayReminder');if(reminder){const today=localISO(new Date());const upcoming=schoolHolidaysB.find(x=>x[1]>=today);reminder.textContent=upcoming?(today>=upcoming[0]?'🏖️ Vacances scolaires en cours : '+upcoming[2]:'📣 Pensez à préparer vos congés : prochaines vacances '+upcoming[2]+' à partir du '+new Date(upcoming[0]+'T12:00:00').toLocaleDateString('fr-FR')):'';}
 
   ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].forEach(day => {
