@@ -1308,7 +1308,7 @@ if(['overview','request','replacement'].includes(tab))for(const offer of (window
  }
 }
 if(['overview','request','replacement'].includes(tab))for(const absence of (window.approvedAbsences||[])){if(absence.date!==date)continue;const e=document.createElement('div');e.className='calendar-event calendar-approved';e.style.background=employeeColor(nm(absence.user_id));e.style.color='white';e.textContent=nm(absence.user_id)+' · Récupération validée'+(absence.start&&absence.end?' ('+shortTime(absence.start)+'–'+shortTime(absence.end)+')':'');cell.appendChild(e)}
-if(tab!=='recovery')(window.calendarLeaves || []).forEach(leave => {
+if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
   // Le planning collectif est officiel : aucune demande en attente n'y figure.
   if (tab === 'overview' && leave.status !== 'approved') return;
