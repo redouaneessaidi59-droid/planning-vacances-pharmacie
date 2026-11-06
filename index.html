@@ -334,6 +334,9 @@ tr:nth-child(even) td{background:#fafcfb}
  .actions>button{max-width:100%}
 }
 @media(prefers-reduced-motion:reduce){.card:not(.hidden){animation:none}#calendarGrid .calendar-day{transition:none}}
+
+/* Les onglets de gestion n'apparaissent que pour les responsables après vérification du rôle. */
+[data-tab][hidden]{display:none!important}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -524,10 +527,31 @@ async function checkLeaveNotificationLink(){
  dialog.showModal();
 }
 
+
+const staffVisibleTabs=new Set(['overview','request','replacement','saturdays','balances','messages','leaveGuide']);
+const managementOnlyTabs=new Set(['schedules','availability','recovery','admin','paidHours']);
+function isManagementUser(){return profile?.role==='owner'||profile?.role==='admin'}
+function applyTabPermissions(){
+  const manager=isManagementUser();
+  document.querySelectorAll('[data-tab]').forEach(button=>{
+    const accessible=manager||staffVisibleTabs.has(button.dataset.tab);
+    button.classList.toggle('hidden',!accessible);
+    button.hidden=!accessible;
+    button.setAttribute('aria-hidden',String(!accessible));
+  });
+  const permitted=manager||staffVisibleTabs.has(tab);
+  if(!permitted){
+    const planning=document.querySelector('[data-tab="overview"]');
+    if(planning)planning.click();
+    else {tab='overview';show('calendarSection',true);}
+  }
+  for(const name of managementOnlyTabs){if(!manager)show(name,false)}
+  if(!manager)show('teamManagement',false);
+}
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
-show('adminTab',p.role==='owner'||p.role==='admin');show('paidHoursTab',p.role==='owner'||p.role==='admin');show('recoveryManagerTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules();const target=document.querySelector('[data-tab="'+savedTab+'"]');if(target&&!target.classList.contains('hidden')&&!(target.closest('.hidden')))target.click();await checkLeaveNotificationLink()}
+show('adminTab',isManagementUser());show('paidHoursTab',isManagementUser());show('recoveryManagerTab',isManagementUser());applyTabPermissions();await refresh();if(isManagementUser())await renderSchedules();const requestedTab=isManagementUser()||staffVisibleTabs.has(savedTab)?savedTab:'overview';const target=document.querySelector('[data-tab="'+requestedTab+'"]');if(target&&!target.classList.contains('hidden')&&!(target.closest('.hidden')))target.click();await checkLeaveNotificationLink()}
 async function loadApprovedAbsences(){const {data,error}=await sb.rpc('list_approved_recovery_absences');if(error){window.approvedAbsences=null;notice('Impossible de charger les récupérations validées : '+error.message,true);return}window.approvedAbsences=(data||[]).map(x=>({user_id:x.user_id,date:x.absence_date,start:x.start_time,end:x.end_time}))}
 async function loadManualAbsences(){const [a,b]=await Promise.all([sb.from('manual_absences').select('id,employee_id,absence_date'),sb.from('manual_absence_replacements').select('*')]);if(a.error||b.error){notice('Absences et remplacements : '+(a.error||b.error).message,true);return}window.manualAbsences=a.data||[];window.manualReplacementOffers=b.data||[]}
 async function openManualAbsencePicker(date){if(!['owner','admin'].includes(profile?.role))return;await getTeam();const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:#0008;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';const panel=document.createElement('div');panel.style.cssText='background:white;padding:22px;border-radius:12px;max-width:430px;width:100%;box-shadow:0 10px 35px #0003';const heading=document.createElement('h3');heading.textContent='Signaler une absence — '+fmt(date);const label=document.createElement('label');label.textContent='Salarié absent';const select=document.createElement('select');select.style.width='100%';for(const p of team){const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.full_name;select.appendChild(opt)}const hint=document.createElement('p');hint.className='muted';hint.textContent='L’absence apparaît dans la couleur du salarié, sans déduire automatiquement ses congés payés.';const actions=document.createElement('div');actions.className='actions';const cancel=document.createElement('button');cancel.className='secondary';cancel.textContent='Annuler';cancel.onclick=()=>overlay.remove();const save=document.createElement('button');save.textContent='Signaler l’absence';save.onclick=async()=>{save.disabled=true;const {error}=await sb.from('manual_absences').insert({employee_id:select.value,absence_date:date,created_by:user.id});if(error){notice(error.code==='23505'?'Cette absence est déjà signalée.':error.message,true);save.disabled=false;return}overlay.remove();await loadManualAbsences();renderCalendar();notice('Absence ajoutée au planning.')};actions.append(cancel,save);const existing=(window.manualAbsences||[]).filter(a=>a.absence_date===date);if(existing.length){const section=document.createElement('div');section.style.marginTop='14px';const title=document.createElement('strong');title.textContent='Absences déjà signalées';section.appendChild(title);for(const absence of existing){const line=document.createElement('div');line.className='row';line.style.marginTop='8px';const name=document.createElement('span');name.textContent=nm(absence.employee_id);name.style.color=employeeColor(nm(absence.employee_id));const remove=document.createElement('button');remove.className='secondary';remove.textContent='Retirer l’absence';remove.onclick=async()=>{overlay.remove();await removeManualAbsence(absence)};line.append(name,remove);section.appendChild(line)}panel.appendChild(section)}panel.append(heading,label,select,hint,actions);overlay.appendChild(panel);overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};document.body.appendChild(overlay)}
@@ -624,7 +648,7 @@ function openAssignmentRefusalDialog(assignment){
 }
 
 async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences(),loadManualAbsences(),loadManagerAssignments()]);renderCalendar();await renderLeastReplacementRanking();await showRecoveryHours();if(profile.role==='owner'||profile.role==='admin'){await renderAdmin();await renderManualReplacementApprovals()}}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='recovery'&&!['owner','admin'].includes(profile?.role))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','leaveGuide','admin','paidHours'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;try{sessionStorage.setItem('pv_active_tab',tab)}catch{}renderCalendar();renderLeastReplacementRanking();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des jauges verticales…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages();if(tab==='paidHours')renderPaidHours()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(!isManagementUser()&&!staffVisibleTabs.has(b.dataset.tab))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','leaveGuide','admin','paidHours'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;try{sessionStorage.setItem('pv_active_tab',tab)}catch{}renderCalendar();renderLeastReplacementRanking();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des jauges verticales…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages();if(tab==='paidHours')renderPaidHours()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
