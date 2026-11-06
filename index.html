@@ -589,7 +589,7 @@ tr:nth-child(even) td{background:#fafcfb}
 <div class="item"><strong>Exemples simples</strong><p>Une semaine complète sans jour férié = <strong>6 jours</strong>.<br>Une semaine avec un jour férié chômé du lundi au samedi = <strong>5 jours</strong>.</p></div>
 <p class="hint">Les congés s'acquièrent à raison de 2,5 jours ouvrables par mois, soit 30 jours pour une année complète. Le calcul peut dépendre de la date réelle de reprise.</p>
 </section>
-<section id="balances" class="card hidden"><h2>📊 Mes compteurs</h2><p class="section-lead">Consultez vos jours de congés et vos récupérations disponibles.</p><div id="myBalances">Chargement…</div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
+<section id="balances" class="card hidden"><h2>📊 Mes compteurs</h2><p class="section-lead">Consultez vos jours de congés et vos récupérations disponibles.</p><div id="myBalances">Chargement…</div><div class="item"><h3>📣 Mes remplacements attribués par la direction</h3><p class="hint">Consulte les dates et horaires qui t’ont été attribués. Si une réponse est nécessaire, tu peux accepter ou refuser ici.</p><div id="myAssignmentNotificationsBalances"></div></div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
 <section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>⚙️ Gestion de la pharmacie</h2><h3>📥 Demandes de congés à traiter</h3><p class="admin-intro">Consultez chaque demande, puis choisissez une décision. Les demandes en attente apparaissent ici.</p><div id="adminRequests"></div><h3 style="margin-top:32px">📊 Soldes de congés des salariés</h3><p class="admin-intro">Modifiez les jours disponibles, puis enregistrez les compteurs de chaque salarié.</p><div id="allBalances"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
@@ -799,11 +799,16 @@ async function renderLeastReplacementRanking(){
 }
 async function loadManagerAssignments(){const {data,error}=await sb.from('manager_replacement_assignments').select('*').is('cancelled_at',null);if(error){console.error('Affectations:',error);return}window.managerAssignments=data||[];renderAssignmentNotifications()}
 function renderAssignmentNotifications(){
- const box=$('myAssignmentNotifications');if(!box)return;box.replaceChildren();
+ const boxes=[$('myAssignmentNotifications'),$('myAssignmentNotificationsBalances')].filter(Boolean);
+ boxes.forEach(b=>b.replaceChildren());
  const mine=(window.managerAssignments||[]).filter(x=>x.replacement_user_id===user?.id).sort((a,b)=>b.work_date.localeCompare(a.work_date));
+ for(const box of boxes){
  for(const a of mine){
   const p=document.createElement('div');p.className='assignment-notification';
-  const message=document.createElement('div');message.textContent='📣 La direction t’a désigné pour remplacer le '+fmt(a.work_date)+' de '+String(a.start_time).slice(0,5)+' à '+String(a.end_time).slice(0,5)+'.';p.appendChild(message);
+  const absent=(window.calendarLeaves||[]).find(l=>a.target_type==='leave'&&l.id===a.target_id);
+  const absentName=absent?.profiles?.full_name||((window.manualAbsences||[]).find(x=>a.target_type==='manual'&&x.id===a.target_id)?.employee_id?nm((window.manualAbsences||[]).find(x=>x.id===a.target_id).employee_id):'un collègue');
+  const message=document.createElement('div');
+  message.textContent='📣 La direction t’a désigné(e) pour remplacer '+absentName+' le '+fmt(a.work_date)+' de '+String(a.start_time).slice(0,5)+' à '+String(a.end_time).slice(0,5)+'.';p.appendChild(message);
   const state=document.createElement('div');state.className='response-status';
   state.textContent=a.response_status==='accepted'?'✓ Affectation confirmée (refus possible avant le début)':a.response_status==='refused'?'✕ Remplacement refusé':'Prévenance inférieure à 7 jours : confirmation demandée';
   p.appendChild(state);
@@ -816,6 +821,8 @@ function renderAssignmentNotifications(){
    if(a.response_status==='pending')actions.appendChild(accept);actions.appendChild(reject);p.appendChild(actions);
   }
   box.appendChild(p);
+ }
+ if(!mine.length && box.id==='myAssignmentNotificationsBalances'){const empty=document.createElement('p');empty.className='hint';empty.textContent='Aucune affectation en cours.';box.appendChild(empty)}
  }
 }
 function openAssignmentRefusalDialog(assignment){
