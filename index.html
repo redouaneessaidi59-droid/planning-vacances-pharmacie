@@ -1970,7 +1970,7 @@ if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   const absentName=leave.profiles?.full_name||'Salarié';
   event.style.background=employeeColor(absentName);
   event.style.color='white';
-  event.style.borderLeft=leave.status==='approved'?'4px solid #236c5b':'4px dashed #a66b12';
+  event.style.borderLeft='none'; // Pastille uniforme, statut exprimé uniquement par le texte
   event.textContent=absentName+(leave.status==='approved'?' absent':' · demande en attente');
   if(tab==='request'&&leave.user_id===user?.id){cell.style.boxShadow='inset 0 0 0 2px '+employeeColor(absentName);event.title='Ta demande de congés : '+(leave.status==='approved'?'validée':'en attente de validation');}
   const replacement=leave.replacements?.find(x=>x.profiles?.full_name && (x.confirmed_at||x.replacement_user_id===user?.id||leave.user_id===user?.id||['owner','admin'].includes(profile?.role)));
