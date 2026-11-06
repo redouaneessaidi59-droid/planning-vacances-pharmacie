@@ -378,6 +378,25 @@ tr:nth-child(even) td{background:#fafcfb}
  .simple-dialog-header h2{font-size:17px}
  .simple-dialog-content{padding:13px}
 }
+
+/* Proposition de remplacement : véritable fenêtre large, jamais intégrée dans la case */
+.replacement-proposal-dialog{border:0;padding:0;background:#fff;color:#183a2b;border-radius:19px;width:min(94vw,710px);max-height:min(90vh,850px);overflow-y:auto;box-shadow:0 28px 85px #0c241b66}
+.replacement-proposal-dialog::backdrop{background:#091d17aa}
+.replacement-proposal-content{padding:0 0 20px}
+.replacement-proposal-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:22px 24px;background:#eef6f0;border-bottom:1px solid #d3e3d7}
+.replacement-proposal-heading h2{font-size:23px;margin:0;color:#173d2d;line-height:1.35}
+.replacement-proposal-heading p{margin:7px 0 0;color:#3d5949;font-weight:700;font-size:16px;line-height:1.5}
+.replacement-proposal-heading button{flex:none;min-height:39px;font-size:14px}
+.replacement-proposal-intro{padding:0 24px;margin:18px 0 3px;font-size:15px;line-height:1.6;color:#475f50}
+.replacement-proposal-body{padding:0 24px}
+.replacement-proposal-body>p:not(.hint){font-size:17px;font-weight:750;line-height:1.5;color:#244d3b}
+.replacement-proposal-body .hint{font-size:15px;line-height:1.6;color:#4c6857;background:#f2f7f3;padding:12px 14px;border-radius:10px}
+.replacement-proposal-body label{font-size:16px;font-weight:750;color:#1e4633}
+.replacement-proposal-body input,.replacement-proposal-body select{width:100%;padding:13px;min-height:51px;font-size:17px;border:1.5px solid #adccba;border-radius:10px}
+.replacement-proposal-actions{display:flex;gap:11px;flex-wrap:wrap;padding:16px 24px 0}
+.replacement-proposal-actions button{font-size:15px;min-height:47px;padding:12px 18px}
+#calendarGrid .replacement-short-summary{font-size:11px;font-weight:750;border:1px solid #b4dabb;border-radius:7px;padding:5px}
+@media(max-width:650px){.replacement-proposal-dialog{width:96vw;max-height:92vh}.replacement-proposal-heading{padding:16px;flex-wrap:wrap}.replacement-proposal-heading h2{font-size:20px}.replacement-proposal-intro{padding:0 16px}.replacement-proposal-body{padding:0 16px}.replacement-proposal-actions{padding:14px 16px 0}.replacement-proposal-actions button{flex:1 1 100%}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -1591,11 +1610,21 @@ async function showManagerAssignInline(cell,targetId,date,isManual){
 }
 function showReplacementInline(cell,leaveId,date,isManual=false){
  if(new Date(date+'T12:00:00').getDay()===0){notice('La pharmacie est fermée le dimanche : aucun remplacement possible.',true);return;}
- document.querySelectorAll('.replacement-inline').forEach(x=>x.remove());
- const box=document.createElement('div');box.className='replacement-inline';box.style.cssText='background:#fff;color:#172b2a;border:1px solid #a6b4b0;border-radius:8px;padding:12px;margin-top:5px;position:relative;z-index:5';
- const title=document.createElement('strong');title.textContent='Remplacement du '+fmt(date);box.appendChild(title);
- const body=document.createElement('div');box.appendChild(body);
- const actions=document.createElement('div');actions.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:10px';box.appendChild(actions);
+ document.querySelectorAll('dialog.replacement-proposal-dialog').forEach(x=>x.close());
+ const dialog=document.createElement('dialog');dialog.className='replacement-proposal-dialog';
+ const box=document.createElement('div');box.className='replacement-proposal-content';
+ const absent=isManual?(window.manualAbsences||[]).find(a=>a.id===leaveId)?.employee_id:(window.calendarLeaves||[]).find(a=>a.id===leaveId)?.user_id;
+ const absentName=nm(absent);
+ const heading=document.createElement('div');heading.className='replacement-proposal-heading';
+ const headingText=document.createElement('div');headingText.className='replacement-proposal-header-text';
+ const headingTitle=document.createElement('h2');headingTitle.textContent='🤝 Proposer un remplacement';
+ const headingDetail=document.createElement('p');headingDetail.textContent=absentName+' · '+new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ headingText.append(headingTitle,headingDetail);
+ const dismiss=document.createElement('button');dismiss.type='button';dismiss.className='secondary';dismiss.textContent='✕ Fermer';dismiss.onclick=()=>dialog.close();
+ heading.append(headingText,dismiss);box.appendChild(heading);
+ const title=document.createElement('p');title.className='replacement-proposal-intro';title.textContent='Renseigne les horaires disponibles et choisis la compensation. La direction validera ensuite ta proposition.';box.appendChild(title);
+ const body=document.createElement('div');body.className='replacement-proposal-body';box.appendChild(body);
+ const actions=document.createElement('div');actions.className='replacement-proposal-actions';box.appendChild(actions);
  const clear=()=>{body.replaceChildren();actions.replaceChildren()};
  const btn=(label,fn,secondary=false)=>{const b=document.createElement('button');b.type='button';b.textContent=label;if(secondary)b.className='secondary';b.onclick=e=>{e.stopPropagation();fn(b)};actions.appendChild(b);return b};
  const field=(name,value)=>{const l=document.createElement('label');l.textContent=name;l.style.cssText='display:block;margin-top:8px';const i=document.createElement('input');i.type='time';i.value=value;i.style.width='100%';l.appendChild(i);body.appendChild(l);return i};
@@ -1607,7 +1636,7 @@ function showReplacementInline(cell,leaveId,date,isManual=false){
   body.appendChild(info);
   const start=field('Heure de début',free?.[0]?.start||'09:00'),end=field('Heure de fin',free?.[0]?.end||'19:30');
   btn('Confirmer ces horaires',()=>{if(!start.value||!end.value||start.value>=end.value){notice('Indique des horaires valides.',true);return}if(!free||!free.some(x=>start.value>=x.start&&end.value<=x.end)){notice('Remplacement impossible : choisis un créneau entièrement libre, sans chevauchement avec ton planning habituel.',true);return}compStep(start.value,end.value)});
-  btn('Annuler',()=>box.remove(),true);
+  btn('Annuler',()=>dialog.close(),true);
  };
  const compStep=(start,end)=>{
   clear();const p=document.createElement('p');p.textContent='Étape 2/3 · '+start+'–'+end+' : choisis comment comptabiliser tes heures.';body.appendChild(p);
@@ -1625,16 +1654,16 @@ function showReplacementInline(cell,leaveId,date,isManual=false){
    if(isManual){
     const {error}=await sb.rpc('offer_manual_absence_replacement',{p_absence_id:leaveId,p_start:start,p_end:end,p_mode:mode});
     if(error){notice(error.message,true);b.disabled=false;return}
-    await refresh();notice('Ta proposition de remplacement a bien été transmise à la direction. En attente de validation.');return;
+    dialog.close();await refresh();notice('Ta proposition de remplacement a bien été transmise à la direction. En attente de validation.');return;
    }
    const {error}=await sb.rpc('propose_replacement',{p_leave_id:leaveId,p_mode:mode,p_recovery_date:null});
    if(error){notice(error.message,true);b.disabled=false;return}
    const {error:se}=await sb.from('replacement_work_slots').insert({leave_id:leaveId,replacement_user_id:user.id,work_date:date,start_time:start,end_time:end});
-   notice(se?'Proposition envoyée, mais les horaires n’ont pas été sauvegardés : '+se.message:'Proposition envoyée. En attente de validation.',!!se);await refresh();
+   dialog.close();notice(se?'Proposition envoyée, mais les horaires n’ont pas pu être sauvegardés : '+se.message:'Proposition envoyée. En attente de validation.',!!se);await refresh();
   });
   btn('Modifier',()=>compStep(start,end),true);
  };
- timeStep();cell.appendChild(box);
+ timeStep();dialog.appendChild(box);document.body.appendChild(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
 }
 
 function formatMainCalendarSummary(cell,date,sunday,holiday){
@@ -1807,14 +1836,14 @@ if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   event.style.background=employeeColor(absentName);
   event.style.color='white';
   event.style.borderLeft=leave.status==='approved'?'4px solid #236c5b':'4px dashed #a66b12';
-  event.textContent=absentName+(leave.status==='approved'?' · Congé validé':' · En attente');
+  event.textContent=absentName+(leave.status==='approved'?' absent':' · demande en attente');
   if(tab==='request'&&leave.user_id===user?.id){cell.style.boxShadow='inset 0 0 0 2px '+employeeColor(absentName);event.title='Ta demande de congés : '+(leave.status==='approved'?'validée':'en attente de validation');}
   const replacement=leave.replacements?.find(x=>x.profiles?.full_name && (x.confirmed_at||x.replacement_user_id===user?.id||leave.user_id===user?.id||['owner','admin'].includes(profile?.role)));
   if(tab==='replacement'&&leave.status==='approved'&&leave.user_id!==user?.id&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();showReplacementInline(cell,leave.id,date)}}if(tab==='replacement'&&leave.status==='approved'&&['owner','admin'].includes(profile?.role)){
    const force=document.createElement('button');force.type='button';force.textContent='Désigner un remplaçant';force.style.cssText='font-size:11px;padding:5px;margin-top:4px';
    force.onclick=e=>{e.stopPropagation();showManagerAssignInline(cell,leave.id,date,false)};cell.appendChild(force);
   }
-  if(replacement&&tab!=='overview'){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='white';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
+  if(replacement&&tab!=='overview'){const rep=document.createElement('div');rep.className='calendar-event';rep.classList.add('replacement-short-summary');rep.style.background='#dcf4e4';rep.style.color='#19583b';rep.textContent='✓ '+replacement.profiles.full_name+' proposé';cell.appendChild(event);cell.appendChild(rep)}
   else cell.appendChild(event);
 });
 
