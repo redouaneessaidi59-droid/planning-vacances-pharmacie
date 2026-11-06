@@ -927,7 +927,7 @@ function replacementStaffingLevel(date){
  }
  if(!samples.length)return null;
  const minimum=Math.min(...samples.map(x=>x.count));
- return {minimum,times:samples.filter(x=>x.count===minimum).slice(0,3).map(x=>staffingClock(x.minute))};
+ const periods=[];for(const sample of samples){if(sample.count!==minimum)continue;const last=periods[periods.length-1];if(last&&last.end===sample.minute){last.end=sample.minute+15}else{periods.push({start:sample.minute,end:sample.minute+15})}}return {minimum,periods:periods.map(p=>staffingClock(p.start)+'–'+staffingClock(p.end))};
 }
 function staffingCriticalPeriods(date){
  if(!schedulePeople.length||!scheduleVersions.length||!Array.isArray(window.approvedAbsences))return [];
@@ -1061,7 +1061,7 @@ if(tab==='replacement'&&!sunday){
   const urgent=staffing?.minimum===0,reduced=staffing?.minimum===1;
   const state=urgent?'Prioritaire':reduced?'À renforcer':'À couvrir';
   const tag=document.createElement('div');tag.className='calendar-event';tag.style.cssText='font-weight:700;font-size:11px;border-radius:6px;padding:4px;margin-top:4px;background:'+(urgent?'#fce0df':reduced?'#fff0cc':'#d8f3e5')+';color:'+(urgent?'#8b2525':reduced?'#7d5200':'#17603a');
-  tag.textContent=state;tag.title=staffing?'Effectif minimal prévu : '+staffing.minimum+' personne(s) · '+staffing.times.join(', '):'Effectifs à vérifier : planning incomplet';cell.appendChild(tag);
+  tag.textContent=state;tag.title=staffing?'Effectif minimal prévu : '+staffing.minimum+' personne(s). Plage(s) : '+staffing.periods.join(' ; '):'Effectifs à vérifier : planning incomplet';cell.appendChild(tag);
  }
 }
 if(['overview','request','replacement'].includes(tab))for(const absence of (window.approvedAbsences||[])){if(absence.date!==date)continue;const e=document.createElement('div');e.className='calendar-event calendar-approved';e.style.background=employeeColor(nm(absence.user_id));e.style.color='white';e.textContent=nm(absence.user_id)+' · Récupération validée'+(absence.start&&absence.end?' ('+shortTime(absence.start)+'–'+shortTime(absence.end)+')':'');cell.appendChild(e)}
