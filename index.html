@@ -1273,6 +1273,21 @@ if(tab==='replacement'&&!sunday){
   tag.textContent=state;tag.title=staffing?'Effectif minimal prévu : '+staffing.minimum+' personne(s). Plage(s) : '+staffing.periods.join(' ; '):'Effectifs à vérifier : planning incomplet';cell.appendChild(tag);
  }
 }
+if(['overview','request','replacement'].includes(tab))for(const offer of (window.manualReplacementOffers||[])){
+ if(offer.work_date!==date||offer.status==='rejected')continue;
+ const manager=['owner','admin'].includes(profile?.role);
+ if(offer.status!=='approved'&&!manager&&offer.replacement_user_id!==user?.id)continue;
+ const absent=(window.manualAbsences||[]).find(a=>a.id===offer.absence_id);
+ const event=document.createElement('div');event.className='calendar-event';
+ event.style.cssText='font-size:11px;padding:5px;margin-top:4px;border-radius:6px;background:'+(offer.status==='approved'?'#d7f4e2':'#fff0c2')+';color:#20372e;border-left:4px solid '+(offer.status==='approved'?'#168454':'#bd831a');
+ event.textContent='↔ '+nm(offer.replacement_user_id)+' remplace '+nm(absent?.employee_id)+' · '+String(offer.start_time).slice(0,5)+'–'+String(offer.end_time).slice(0,5)+' · '+(offer.status==='approved'?'Validé':'À valider par la direction');
+ cell.appendChild(event);
+ if(manager&&offer.status==='pending'){
+  const b=document.createElement('button');b.type='button';b.textContent='Valider le remplacement';b.style.cssText='font-size:10px;padding:5px;margin-top:3px';
+  b.onclick=async e=>{e.stopPropagation();if(!confirm('Valider le remplacement de '+nm(absent?.employee_id)+' par '+nm(offer.replacement_user_id)+' le '+fmt(date)+' ?'))return;b.disabled=true;const {error}=await sb.from('manual_absence_replacements').update({status:'approved',decided_by:user.id,decided_at:new Date().toISOString()}).eq('id',offer.id).eq('status','pending');if(error){notice(error.message,true);b.disabled=false;return}await refresh();notice('Remplacement validé et visible dans les calendriers.')};
+  cell.appendChild(b);
+ }
+}
 if(['overview','request','replacement'].includes(tab))for(const absence of (window.approvedAbsences||[])){if(absence.date!==date)continue;const e=document.createElement('div');e.className='calendar-event calendar-approved';e.style.background=employeeColor(nm(absence.user_id));e.style.color='white';e.textContent=nm(absence.user_id)+' · Récupération validée'+(absence.start&&absence.end?' ('+shortTime(absence.start)+'–'+shortTime(absence.end)+')':'');cell.appendChild(e)}
 if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
