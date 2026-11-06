@@ -454,6 +454,31 @@ tr:nth-child(even) td{background:#fafcfb}
 .saturday-dialog-body #satSwapHiddenInputs{display:block}
 .saturday-dialog-body #satSwapHiddenInputs .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:650px){.saturday-action-dialog{width:96vw;max-height:92vh}.saturday-dialog-header{padding:14px;flex-wrap:wrap}.saturday-dialog-header h2{font-size:20px}.saturday-dialog-body{padding:16px}.saturday-dialog-body #satSwapHiddenInputs .grid{grid-template-columns:1fr}.saturday-dialog-actions button{width:100%}}
+
+/* Jours fériés nationaux : même présentation dans tous les calendriers */
+#calendarGrid .holiday-calendar-day,
+#calendarSection .simple-calendar-day.holiday-calendar-day,
+#calendarSection .saturday-summary-day.holiday-calendar-day {
+ background:#e5e7eb!important;
+ background-image:none!important;
+ border:1.5px solid #bfc7ce!important;
+ color:#46515b!important;
+ box-shadow:none!important;
+}
+#calendarGrid .holiday-calendar-day>strong{color:#46515b!important}
+#calendarGrid .holiday-calendar-day .calendar-holiday{
+ display:block!important;background:#d1d5db;color:#374151;
+ border:1px solid #bfc6cf;border-radius:7px;padding:6px 8px;
+ margin:6px 0;font-size:12px;font-weight:800;line-height:1.4;overflow-wrap:anywhere;
+}
+#calendarGrid .holiday-calendar-day .simple-day-closed{background:#d1d5db;color:#374151;border-radius:7px;padding:6px 8px;font-weight:800}
+#recCalendar .holiday-recovery-day,
+#recCalendar .holiday-recovery-day:disabled{
+ background:#e5e7eb!important;border:1.5px solid #bcc5cf!important;
+ color:#374151!important;opacity:1!important;cursor:not-allowed;
+ outline:none!important;box-shadow:none!important;
+}
+#recCalendar .holiday-recovery-day small{color:#4b5563!important;font-weight:750;line-height:1.3}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -1362,12 +1387,13 @@ async function renderRecovery(){
  const outsideLunch=critical.filter(p=>p.start<720||p.end>840);
  const lunchOnly=critical.length>0&&!outsideLunch.length;
  const recommended=works&&!outsideLunch.length&&!leave&&!already;
- const label=leave?'Congé déjà posé':already?'Déjà demandé':!works?'Repos habituel':lunchOnly?'À confirmer uniquement de 12 h à 14 h':recommended?'✓ Possible · couverture habituelle suffisante':'⚠ À confirmer · effectif réduit hors 12 h–14 h';
- const cl=leave||already?'busy':!works?'off':outsideLunch.length?'busy':'';
- html+='<button type="button" class="'+cl+'" data-rec="'+date+'" style="'+(recommended?'background:#c5f1d6;color:#13532c;':'')+'">'+n+'<small style="display:block">'+label+'</small></button>';
+ const holiday=holidayName(date);
+ const label=holiday?'Jour férié : '+holiday:leave?'Congé déjà posé':already?'Déjà demandé':!works?'Repos habituel':lunchOnly?'À confirmer uniquement de 12 h à 14 h':recommended?'✓ Possible · couverture habituelle suffisante':'⚠ À confirmer · effectif réduit hors 12 h–14 h';
+ const cl=holiday?'holiday-recovery-day':leave||already?'busy':!works?'off':outsideLunch.length?'busy':'';
+ html+='<button type="button" class="'+cl+'" data-rec="'+date+'" '+(holiday?'disabled aria-label="Jour férié : '+esc(holiday)+'" title="Jour férié : '+esc(holiday)+'"':'')+' style="'+(!holiday&&recommended?'background:#c5f1d6;color:#13532c;':'')+'">'+n+'<small style="display:block">'+esc(label)+'</small></button>';
  }
  $('recCalendar').innerHTML=html;
- $('recCalendar').querySelectorAll('[data-rec]').forEach(x=>x.onclick=()=>{if($('recDate').value===x.dataset.rec){$('recDate').value='';x.style.outline='';return} $('recDate').value=x.dataset.rec;$('recCalendar').querySelectorAll('[data-rec]').forEach(b=>b.style.outline='');x.style.outline='3px solid #174b40';notice('Récupération sélectionnée : '+fmt(x.dataset.rec))});
+ $('recCalendar').querySelectorAll('[data-rec]').forEach(x=>x.onclick=()=>{if(holidayName(x.dataset.rec))return;if($('recDate').value===x.dataset.rec){$('recDate').value='';x.style.outline='';return} $('recDate').value=x.dataset.rec;$('recCalendar').querySelectorAll('[data-rec]').forEach(b=>b.style.outline='');x.style.outline='3px solid #174b40';notice('Récupération sélectionnée : '+fmt(x.dataset.rec))});
  $('recList').innerHTML='<h3>Mes récupérations</h3>'+recs.filter(x=>x.user_id===viewedId).map(x=>'<div class="item">'+fmt(x.recovery_date)+' — '+esc(status(x.status))+' · '+(x.debit_half_days?x.debit_half_days/2+' jour(s)':'')+(x.debit_minutes?' '+displayMinutes(x.debit_minutes):'')+'</div>').join('');
  $('recAdmin').innerHTML=(profile.role==='admin'||profile.role==='owner')?'<h3>À valider</h3>'+recs.filter(x=>x.status==='pending').map(x=>'<div class="item">'+esc(nm(x.user_id))+' '+fmt(x.recovery_date)+' · '+(x.debit_half_days?x.debit_half_days/2+' jour(s)':'')+(x.debit_minutes?' '+displayMinutes(x.debit_minutes):'')+' <button onclick="decideRecovery(\''+x.id+'\',true)">Valider</button> <button class="danger" onclick="decideRecovery(\''+x.id+'\',false)">Refuser</button></div>').join(''):'';
  }catch(e){msgError(e)}
@@ -1376,7 +1402,7 @@ $('recKind').onchange=()=>show('recHours',$('recKind').value==='hours');$('recEm
 $('recPrev').onclick=()=>{recMonth.setMonth(recMonth.getMonth()-1,1);renderRecovery()};
 $('recNext').onclick=()=>{recMonth.setMonth(recMonth.getMonth()+1,1);renderRecovery()};
 $('recSend').onclick=async()=>{
- if(!$('recDate').value){notice('Clique sur une date.',true);return}
+ if(!$('recDate').value){notice('Clique sur une date.',true);return}if(holidayName($('recDate').value)){notice('Impossible de demander une récupération sur un jour férié : '+holidayName($('recDate').value),true);return}
  if($('recEmployee').value!==user.id){notice('Pour demander une récupération, sélectionne ton propre calendrier.',true);return}
  const kind=$('recKind').value,start=$('recStart').value,end=$('recEnd').value;
  if(kind==='hours'&&(!start||!end||start>=end)){notice('Choisis des horaires valides.',true);return}
@@ -1903,7 +1929,7 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
  }
  const badges=[];
  if(sunday)badges.push({text:'Fermé',kind:'closed'});
- else if(holiday)badges.push({text:'Jour férié',kind:'closed'});
+ else if(holiday)badges.push({text:'Jour férié : '+holiday,kind:'closed'});
  for(const name of names)badges.push({text:name+' absent'+(name.endsWith('e')?'e':''),kind:'employee',name});
  for(const entry of replacementEntries){
    badges.push({text:(entry.confirmed?'✓ ':'⏳ ')+entry.name+(entry.confirmed?' remplace':' proposé'),kind:'employee',name:entry.name});
@@ -2030,8 +2056,8 @@ cell.appendChild(number);
 
 const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;const sunday=new Date(year,month,day).getDay()===0;const holiday=holidayName(date);const vacation=holidayCalendarLabel(date);
 if(sunday){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title='Pharmacie fermée le dimanche'}else if(holiday){cell.title='Jour férié : '+holiday;if(['overview','replacement'].includes(tab)){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.style.color='#64748b';}}
-if(sunday){const closed=document.createElement('div');closed.className='calendar-event';closed.style.cssText='color:#64748b;font-size:13px;font-weight:700;text-align:center;margin-top:12px';closed.textContent='Fermé';cell.appendChild(closed);grid.appendChild(cell);continue;}
-if(holiday){const flag=document.createElement('div');flag.className='calendar-holiday';flag.textContent='⚑ '+holiday;cell.appendChild(flag);if(tab==='request'){cell.style.background='#e5e7eb';cell.style.borderColor='#cbd5e1';cell.title='Jour férié : congé non sélectionnable'}}
+if(sunday){const closed=document.createElement('div');closed.className='calendar-event';closed.style.cssText='color:#64748b;font-size:13px;font-weight:700;text-align:center;margin-top:12px';closed.textContent=holiday?'Jour férié : '+holiday:'Fermé';cell.appendChild(closed);if(holiday){cell.classList.add('holiday-calendar-day');cell.title='Jour férié : '+holiday;}grid.appendChild(cell);continue;}
+if(holiday){const flag=document.createElement('div');flag.className='calendar-holiday';flag.textContent='Jour férié : '+holiday;cell.appendChild(flag);cell.title='Jour férié : '+holiday;}
 if(vacation){const tag=document.createElement('div');tag.className='calendar-school';tag.textContent=vacation;cell.appendChild(tag)}
 if(tab==='overview'&&['owner','admin'].includes(profile?.role)){cell.classList.add('calendar-clickable');cell.title='Signaler une absence le '+date;cell.onclick=()=>openManualAbsencePicker(date)}
 if(tab==='request'&&!sunday&&!holiday){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&!sunday&&!holiday&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';};
@@ -2186,6 +2212,7 @@ for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===
 }
 formatMainCalendarSummary(cell,date,sunday,holiday);
 formatSaturdayCalendarDay(cell,date);
+if(holiday){cell.classList.add('holiday-calendar-day');cell.title='Jour férié : '+holiday;cell.style.backgroundColor='#e5e7eb';cell.style.backgroundImage='none';cell.style.borderColor='#bfc7ce';cell.style.color='#495760';}
 grid.appendChild(cell);
   }
 }
