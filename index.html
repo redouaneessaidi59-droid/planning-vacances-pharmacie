@@ -687,10 +687,11 @@ $('availSave').onclick=async()=>{
 window.delAvailability=async id=>{const {error}=await sb.from('replacement_availability').delete().eq('id',id).eq('user_id',user.id);if(error)msgError(error);else renderAvailability()};
 async function renderReplacementNeeds(){
  const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='pending'&&x.user_id!==user?.id&&!x.replacements?.length);
+ const manual=(window.manualAbsences||[]).filter(a=>a.employee_id!==user?.id);
  const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
  if(recoveries.error){$('replacementNeeds').textContent='Impossible de charger les récupérations : '+recoveries.error.message;return}
  const needs=(recoveries.data||[]).filter(x=>x.user_id!==user?.id);
- $('replacementNeeds').innerHTML='<strong>Absences à remplacer : '+leaves.length+'</strong><p class="hint">Clique sur une absence dans le calendrier pour renseigner ta proposition.</p>'+
+ $('replacementNeeds').innerHTML='<strong>Absences à couvrir : '+(leaves.length+manual.length)+'</strong><p class="hint">Clique sur une demande de congé pour proposer tes horaires. Les absences signalées manuellement sont comptées dans les effectifs ; leur remplacement doit encore être enregistré par la direction.</p>'+
  (needs.length?'<h3>Récupérations demandées par les collègues</h3>'+needs.map(x=>'<div class="item">'+esc(nm(x.user_id))+' souhaite récupérer le '+fmt(x.recovery_date)+' — besoin éventuel de remplacement. <span class="muted">Proposition pour récupération : en cours de mise en place.</span></div>').join(''):'');
 }
 async function renderRecovery(){
@@ -899,12 +900,12 @@ function staffingByMoment(date,clock){
  if(!schedulePeople.length||!scheduleVersions.length)return null;
  const weekday=new Date(date+'T12:00:00').getDay();
  if(weekday===0)return 0;
- const minute=timeMin(clock),leaves=window.calendarLeaves||[],recoveries=window.approvedAbsences||[];
+ const minute=timeMin(clock),leaves=window.calendarLeaves||[],recoveries=window.approvedAbsences||[],manual=window.manualAbsences||[];
  return schedulePeople.filter(person=>{
   if(person.id===user?.id)return false;
   const version=scheduleCurrent(person.id,date);if(!version)return false;
   const onShift=scheduleSlots.some(slot=>slot.version_id===version.id&&Number(slot.weekday)===weekday&&timeMin(slot.start_time)<=minute&&timeMin(slot.end_time)>minute);
-  return onShift&&!leaves.some(leave=>leave.user_id===person.id&&leave.status==='approved'&&date>=leave.start_date&&date<=leave.end_date)&&!recoveries.some(r=>r.user_id===person.id&&r.date===date&&(!r.start||!r.end||(timeMin(r.start)<=minute&&minute<timeMin(r.end))));
+  return onShift&&!manual.some(a=>a.employee_id===person.id&&a.absence_date===date)&&!leaves.some(leave=>leave.user_id===person.id&&leave.status==='approved'&&date>=leave.start_date&&date<=leave.end_date)&&!recoveries.some(r=>r.user_id===person.id&&r.date===date&&(!r.start||!r.end||(timeMin(r.start)<=minute&&minute<timeMin(r.end))));
  }).length;
 }
 function replacementStaffingLevel(date){
@@ -914,11 +915,13 @@ function replacementStaffingLevel(date){
  const opening=weekday===6?[[540,750],...(weeks%2===0?[[840,1140]]:[])]:[[540,1170]];
  const absences=(window.calendarLeaves||[]).filter(l=>l.status!=='rejected'&&date>=l.start_date&&date<=l.end_date);
  const recovery=window.approvedAbsences||[];
+ const manual=(window.manualAbsences||[]).filter(a=>a.absence_date===date);
  const slots=scheduleBars(date);
  const samples=[];
  for(const [start,end] of opening)for(let minute=start;minute<end;minute+=15){
   const names=new Set(slots.filter(x=>timeMin(x.start)<=minute&&timeMin(x.end)>minute).map(x=>x.name));
   for(const l of absences)names.delete(l.profiles?.full_name||nm(l.user_id));
+  for(const a of manual)names.delete(nm(a.employee_id));
   for(const r of recovery)if(r.date===date&&(!r.start||!r.end||(timeMin(r.start)<=minute&&minute<timeMin(r.end))))names.delete(nm(r.user_id));
   samples.push({minute,count:names.size});
  }
@@ -1052,7 +1055,7 @@ if(tab==='overview'&&['owner','admin'].includes(profile?.role)){cell.classList.a
 if(tab==='request'&&!sunday&&!holiday){cell.classList.add('calendar-clickable');cell.onclick=()=>selectLeaveDate(date)};if(tab==='request'&&!sunday&&!holiday&&(leaveRanges.some(r=>date>=r[0]&&date<=r[1])||date===pendingRangeStart)){cell.style.outline='3px solid '+employeeColor(profile?.full_name||nm(user?.id));cell.style.background=employeeColor(profile?.full_name||nm(user?.id));cell.style.color='white';};
 
 if(tab==='replacement'&&!sunday){
- const needsToday=(window.calendarLeaves||[]).some(l=>l.user_id!==user?.id&&l.status==='pending'&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
+ const needsToday=(window.calendarLeaves||[]).some(l=>l.user_id!==user?.id&&l.status==='pending'&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date)||(window.manualAbsences||[]).some(a=>a.employee_id!==user?.id&&a.absence_date===date);
  if(needsToday){
   const staffing=replacementStaffingLevel(date);
   const urgent=staffing?.minimum===0,reduced=staffing?.minimum===1;
