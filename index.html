@@ -1838,7 +1838,7 @@ if(['overview','request','replacement'].includes(tab))for(const offer of (window
  const absent=(window.manualAbsences||[]).find(a=>a.id===offer.absence_id);
  const event=document.createElement('div');event.className='calendar-event';
  event.style.cssText='font-size:11px;padding:5px;margin-top:4px;border-radius:6px;background:'+(offer.status==='approved'?'#d7f4e2':'#fff0c2')+';color:#20372e;border-left:4px solid '+(offer.status==='approved'?'#168454':'#bd831a');
- event.textContent='↔ '+nm(offer.replacement_user_id)+' remplace '+nm(absent?.employee_id)+' · '+String(offer.start_time).slice(0,5)+'–'+String(offer.end_time).slice(0,5)+' · '+(offer.status==='approved'?'Validé':'À valider par la direction');
+ event.textContent=offer.status==='approved'?'✓ '+nm(offer.replacement_user_id)+' remplace '+nm(absent?.employee_id):'⏳ '+nm(offer.replacement_user_id)+' proposé';event.title='Remplacement du '+fmt(date)+' · '+String(offer.start_time).slice(0,5)+'–'+String(offer.end_time).slice(0,5)+' · '+(offer.status==='approved'?'Validé':'En attente de validation');
  cell.appendChild(event);
  if(manager&&offer.status==='pending'){
   const b=document.createElement('button');b.type='button';b.textContent='Valider le remplacement';b.style.cssText='font-size:10px;padding:5px;margin-top:3px';
@@ -1873,7 +1873,7 @@ if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
    const force=document.createElement('button');force.type='button';force.textContent='Désigner un remplaçant';force.style.cssText='font-size:11px;padding:5px;margin-top:4px';
    force.onclick=e=>{e.stopPropagation();showManagerAssignInline(cell,leave.id,date,false)};cell.appendChild(force);
   }
-  if(replacement&&tab!=='overview'){const rep=document.createElement('div');rep.className='calendar-event';rep.classList.add('replacement-short-summary');rep.style.background='#dcf4e4';rep.style.color='#19583b';rep.textContent='✓ '+replacement.profiles.full_name+' proposé';cell.appendChild(event);cell.appendChild(rep)}
+  if(replacement&&tab!=='overview'){const rep=document.createElement('div');rep.className='calendar-event';rep.classList.add('replacement-short-summary');rep.style.background='#dcf4e4';rep.style.color='#19583b';rep.textContent=(replacement.confirmed_at?'✓ ':'⏳ ')+replacement.profiles.full_name+(replacement.confirmed_at?' remplace':' proposé');cell.appendChild(event);cell.appendChild(rep)}
   else cell.appendChild(event);
 });
 
