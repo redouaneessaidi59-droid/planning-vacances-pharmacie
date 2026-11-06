@@ -763,7 +763,7 @@ document.querySelectorAll('[data-tab]').forEach(b => {
 });
 function isOpenReplacementLeave(l){return !!l&&l.status==='pending'&&l.replacement_required===true&&!(l.replacements||[]).some(r=>r.confirmed_at)}
 function canOfferLeave(l){return isOpenReplacementLeave(l)&&l.user_id!==user?.id&&!(l.replacements||[]).some(r=>r.replacement_user_id===user?.id)}
-async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
+async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,confirmed_at,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
 const {data:openLeaves,error:openLeavesError}=await sb.rpc('list_open_replacement_leaves');
 if(openLeavesError)console.warn('Remplacements ouverts :',openLeavesError.message);
 const known=new Set((data||[]).map(l=>l.id));
@@ -1751,7 +1751,7 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
  cell.classList.add('simple-calendar-day');
  if(sunday||holiday)cell.classList.add('simple-calendar-closed');
  const manual=(window.manualAbsences||[]).filter(a=>a.absence_date===date);
- const leave=(window.calendarLeaves||[]).filter(l=>(l.status==='approved'||(tab==='replacement'&&isOpenReplacementLeave(l)))&&date>=l.start_date&&date<=l.end_date);
+ const leave=(window.calendarLeaves||[]).filter(l=>(tab==='replacement'?isOpenReplacementLeave(l):l.status==='approved')&&date>=l.start_date&&date<=l.end_date);
  const recovery=(window.approvedAbsences||[]).filter(a=>a.date===date);
  const names=[...new Set([
    ...manual.map(a=>nm(a.employee_id)),
@@ -1960,6 +1960,8 @@ if(['overview','request','replacement'].includes(tab))for(const offer of (window
 if(['overview','request','replacement'].includes(tab))for(const absence of (window.approvedAbsences||[])){if(absence.date!==date)continue;const e=document.createElement('div');e.className='calendar-event calendar-approved';e.style.background=employeeColor(nm(absence.user_id));e.style.color='white';e.textContent=nm(absence.user_id)+' · Récupération validée'+(absence.start&&absence.end?' ('+shortTime(absence.start)+'–'+shortTime(absence.end)+')':'');cell.appendChild(e)}
 if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   if (leave.status === 'rejected') return;
+  // Les congés approuvés sans remplaçant restent uniquement dans le planning officiel.
+  if(tab==='replacement'&&!isOpenReplacementLeave(leave))return;
   // Le planning collectif est officiel : aucune demande en attente n'y figure.
   if (tab === 'overview' && leave.status !== 'approved') return;
   if (tab === 'request' && leave.status !== 'approved' && leave.user_id !== user?.id && !['owner','admin'].includes(profile?.role)) return;
