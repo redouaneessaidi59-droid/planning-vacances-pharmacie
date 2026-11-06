@@ -761,9 +761,15 @@ document.querySelectorAll('[data-tab]').forEach(b => {
     if(b.dataset.tab === 'admin' && profile?.role === 'owner')loadPasswordResetEmployees();
   });
 });
+function isOpenReplacementLeave(l){return !!l&&l.status==='pending'&&l.replacement_required===true&&!(l.replacements||[]).some(r=>r.confirmed_at)}
+function canOfferLeave(l){return isOpenReplacementLeave(l)&&l.user_id!==user?.id&&!(l.replacements||[]).some(r=>r.replacement_user_id===user?.id)}
 async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
-window.calendarLeaves = data || [];
-const openCount=window.calendarLeaves.filter(x=>x.status==='approved'&&x.user_id!==user?.id&&!x.replacements?.length).length;
+const {data:openLeaves,error:openLeavesError}=await sb.rpc('list_open_replacement_leaves');
+if(openLeavesError)console.warn('Remplacements ouverts :',openLeavesError.message);
+const known=new Set((data||[]).map(l=>l.id));
+const visibleOpen=(openLeaves||[]).filter(l=>!known.has(l.id)).map(l=>({id:l.id,user_id:l.user_id,start_date:l.start_date,end_date:l.end_date,status:'pending',replacement_required:true,profiles:{full_name:l.full_name},replacements:[]}));
+window.calendarLeaves=[...(data||[]),...visibleOpen];
+const openCount=window.calendarLeaves.filter(canOfferLeave).length;
 const countBadge=document.getElementById('replacementCount');if(countBadge)countBadge.textContent=String(openCount);
 
 if (typeof renderCalendar === 'function') {
@@ -771,7 +777,7 @@ if (typeof renderCalendar === 'function') {
 }                    
 $('requestsList').innerHTML=(data||[]).map(r=>{
   const self=r.user_id===user?.id;
-  const currentStatus=r.status==='pending'?'⏳ En attente de validation':r.status==='approved'?'✓ Congés acceptés':r.status==='rejected'?'✕ Demande refusée':status(r.status);
+  const currentStatus=r.status==='pending'?(r.replacement_required===true?'👥 Recherche de remplaçant':'⏳ En attente de validation'):r.status==='approved'?'✓ Congés acceptés':r.status==='rejected'?'✕ Demande refusée':status(r.status);
   const stateClass=r.status==='approved'?'approved':r.status==='rejected'?'rejected':'pending';
   const replacementName=r.replacements?.[0]?.profiles?.full_name;
   const replacementInfo=replacementName
@@ -791,7 +797,7 @@ $('requestsList').innerHTML=(data||[]).map(r=>{
     <div class="team-leave-actions"></div>
   </article>`;
 }).join('')||'<p class="team-requests-empty">Aucune demande de congés pour le moment.</p>';
-$('replaceLeave').innerHTML=data.filter(r=>r.user_id!==user.id&&r.status==='approved'&&(!r.replacements||!r.replacements.length)).map(r=>`<option value="${r.id}">${esc(r.profiles?.full_name||'Salarié')} — ${fmt(r.start_date)} au ${fmt(r.end_date)}</option>`).join('')}
+$('replaceLeave').innerHTML=window.calendarLeaves.filter(canOfferLeave).map(r=>`<option value="${r.id}">${esc(r.profiles?.full_name||'Salarié')} — ${fmt(r.start_date)} au ${fmt(r.end_date)}</option>`).join('')}
 $('retryLeaveEmail').onclick=()=>{ $('emailTestResult').textContent='Les notifications sont désormais envoyées automatiquement par Supabase aux responsables. Aucun renvoi manuel nécessaire.'; };
 $('sendLeave').onclick=async()=>{const ranges=leaveRanges.length?leaveRanges:($('leaveStart').value&&$('leaveEnd').value?[[$('leaveStart').value,$('leaveEnd').value]]:[]);if(pendingRangeStart){notice('Termine la période en cliquant sur son dernier jour.',true);return}if(!ranges.length||ranges.some(r=>r[1]<r[0]||countedLeaveDates(r[0],r[1]).length===0)){notice('Sélectionne une ou plusieurs périodes valides.',true);return}const today=new Date();today.setHours(0,0,0,0);for(const [start,end] of ranges){const days=countedLeaveDates(start,end).length,noticeDays=Math.round((new Date(start+'T00:00:00')-today)/86400000);if(noticeDays<(days<=5?7:15)){notice('Préavis interne insuffisant pour la période du '+fmt(start)+' : '+(days<=5?7:15)+' jours requis. Contacte Ibrahim pour une urgence.',true);return}}let count=0;for(const [start,end] of ranges){const {data:createdLeave,error}=await sb.from('leave_requests').insert({user_id:user.id,start_date:start,end_date:end,note:$('leaveNote').value}).select('id').single();if(!error&&createdLeave?.id){$('emailTestResult').textContent='Demande enregistrée. Notification automatique programmée pour les responsables.';}if(error){notice(count+' période(s) envoyée(s) ; échec sur '+fmt(start)+' : '+error.message,true);await refresh();return}count++}leaveRanges=[];pendingRangeStart=null;rangeMode=false;updateRangeSummary();renderCalendar();$('leaveNote').value='';notice(count+' période(s) envoyée(s).');await refresh()};
 $('compMode').onchange=()=>show('recoveryFields',$('compMode').value==='recovery');
@@ -1067,7 +1073,7 @@ window.setReplacementRequirement = async (id, required) => {
 
   notice(
     required
-      ? 'Remplacement obligatoire enregistré.'
+      ? 'Remplacement exigé : la demande apparaît dans « Je souhaite remplacer ».'
       : 'Aucun remplacement nécessaire enregistré.'
   );
 
@@ -1276,7 +1282,7 @@ $('availSave').onclick=async()=>{
 };
 window.delAvailability=async id=>{const {error}=await sb.from('replacement_availability').delete().eq('id',id).eq('user_id',user.id);if(error)msgError(error);else renderAvailability()};
 async function renderReplacementNeeds(){
- const leaves=(window.calendarLeaves||[]).filter(x=>x.status==='approved'&&x.user_id!==user?.id&&!x.replacements?.length);
+ const leaves=(window.calendarLeaves||[]).filter(canOfferLeave);
  const manual=(window.manualAbsences||[]).filter(a=>a.employee_id!==user?.id);
  const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
  if(recoveries.error){$('replacementNeeds').textContent='Impossible de charger les récupérations : '+recoveries.error.message;return}
@@ -1712,7 +1718,7 @@ function openReplacementChoices(cell,date){
  const manual=(window.manualAbsences||[]).filter(a=>a.absence_date===date&&a.employee_id!==user?.id)
    .filter(a=>!(window.manualReplacementOffers||[]).some(o=>o.absence_id===a.id&&o.replacement_user_id===user?.id&&o.status!=='rejected'))
    .map(a=>({id:a.id,manual:true,name:nm(a.employee_id)}));
- const leave=(window.calendarLeaves||[]).filter(l=>l.user_id!==user?.id&&l.status==='approved'&&date>=l.start_date&&date<=l.end_date&&!l.replacements?.length)
+ const leave=(window.calendarLeaves||[]).filter(l=>canOfferLeave(l)&&date>=l.start_date&&date<=l.end_date)
    .map(l=>({id:l.id,manual:false,name:l.profiles?.full_name||nm(l.user_id)}));
  const available=[...manual,...leave];
  if(!available.length)return;
@@ -1745,7 +1751,7 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
  cell.classList.add('simple-calendar-day');
  if(sunday||holiday)cell.classList.add('simple-calendar-closed');
  const manual=(window.manualAbsences||[]).filter(a=>a.absence_date===date);
- const leave=(window.calendarLeaves||[]).filter(l=>l.status==='approved'&&date>=l.start_date&&date<=l.end_date);
+ const leave=(window.calendarLeaves||[]).filter(l=>(l.status==='approved'||(tab==='replacement'&&isOpenReplacementLeave(l)))&&date>=l.start_date&&date<=l.end_date);
  const recovery=(window.approvedAbsences||[]).filter(a=>a.date===date);
  const names=[...new Set([
    ...manual.map(a=>nm(a.employee_id)),
@@ -1792,7 +1798,7 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
  }
  if(tab==='replacement'&&!sunday&&!holiday){
    const canOffer=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id)
-     ||(window.calendarLeaves||[]).some(l=>l.status==='approved'&&l.user_id!==user?.id&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
+     ||(window.calendarLeaves||[]).some(l=>canOfferLeave(l)&&date>=l.start_date&&date<=l.end_date);
    const staffing=replacementStaffingLevel(date);
    if(canOffer)badges.push({text:'Remplacement à proposer',kind:'neutral'});
    if(staffing?.minimum===0)badges.push({text:'Effectif insuffisant',kind:'warning'});
@@ -1847,7 +1853,7 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
   details.hidden=false;content.appendChild(details);
   if(tab==='replacement'&&!sunday&&!holiday){
     const manual=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id);
-    const leave=(window.calendarLeaves||[]).some(l=>l.status==='approved'&&l.user_id!==user?.id&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
+    const leave=(window.calendarLeaves||[]).some(l=>canOfferLeave(l)&&date>=l.start_date&&date<=l.end_date);
     if(manual||leave){
       const propose=document.createElement('button');propose.type='button';propose.textContent='🤝 Proposer un remplacement';propose.className='simple-dialog-add';
       propose.onclick=()=>{dialog.close();openReplacementChoices(cell,date)};
@@ -1927,7 +1933,7 @@ if(tab==='replacement'&&!sunday){
   const caption=document.createElement('span');caption.textContent=level==='red'?'Aucun salarié':level==='yellow'?'Effectif réduit':'Couverture OK';
   indicator.append(dot,caption);indicator.title='Effectif minimal : '+staffingStatus.minimum+' · '+staffingStatus.periods.join(' ; ');cell.appendChild(indicator);
  }
- const needsToday=(window.calendarLeaves||[]).some(l=>l.user_id!==user?.id&&l.status==='pending'&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date)||(window.manualAbsences||[]).some(a=>a.employee_id!==user?.id&&a.absence_date===date);
+ const needsToday=(window.calendarLeaves||[]).some(l=>canOfferLeave(l)&&date>=l.start_date&&date<=l.end_date)||(window.manualAbsences||[]).some(a=>a.employee_id!==user?.id&&a.absence_date===date);
  if(needsToday){
   const staffing=replacementStaffingLevel(date);
   const urgent=staffing?.minimum===0,reduced=staffing?.minimum===1;
@@ -1957,8 +1963,8 @@ if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   // Le planning collectif est officiel : aucune demande en attente n'y figure.
   if (tab === 'overview' && leave.status !== 'approved') return;
   if (tab === 'request' && leave.status !== 'approved' && leave.user_id !== user?.id && !['owner','admin'].includes(profile?.role)) return;
-  if (leave.status !== 'approved' && !['replacement','request'].includes(tab)) return;
-  if (leave.status !== 'approved' && leave.user_id !== user?.id && !['owner','admin'].includes(profile?.role)) return;
+  if (leave.status !== 'approved' && !(tab==='replacement'&&isOpenReplacementLeave(leave)) && tab!=='request') return;
+  if (leave.status !== 'approved' && leave.user_id !== user?.id && !(tab==='replacement'&&isOpenReplacementLeave(leave))) return;
   if (date < leave.start_date || date > leave.end_date) return;
 
   const event = document.createElement('div');
@@ -1971,10 +1977,10 @@ if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   event.style.background=employeeColor(absentName);
   event.style.color='white';
   event.style.borderLeft='none'; // Pastille uniforme, statut exprimé uniquement par le texte
-  event.textContent=absentName+(leave.status==='approved'?' absent':' · demande en attente');
+  event.textContent=absentName+(leave.status==='approved'?' absent':' · remplaçant recherché');
   if(tab==='request'&&leave.user_id===user?.id){cell.style.boxShadow='inset 0 0 0 2px '+employeeColor(absentName);event.title='Ta demande de congés : '+(leave.status==='approved'?'validée':'en attente de validation');}
   const replacement=leave.replacements?.find(x=>x.profiles?.full_name && (x.confirmed_at||x.replacement_user_id===user?.id||leave.user_id===user?.id||['owner','admin'].includes(profile?.role)));
-  if(tab==='replacement'&&leave.status==='approved'&&leave.user_id!==user?.id&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();showReplacementInline(cell,leave.id,date)}}if(tab==='replacement'&&leave.status==='approved'&&['owner','admin'].includes(profile?.role)){
+  if(tab==='replacement'&&canOfferLeave(leave)&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();showReplacementInline(cell,leave.id,date)}}if(tab==='replacement'&&isOpenReplacementLeave(leave)&&['owner','admin'].includes(profile?.role)){
    const force=document.createElement('button');force.type='button';force.textContent='Désigner un remplaçant';force.style.cssText='font-size:11px;padding:5px;margin-top:4px';
    force.onclick=e=>{e.stopPropagation();showManagerAssignInline(cell,leave.id,date,false)};cell.appendChild(force);
   }
