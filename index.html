@@ -1752,23 +1752,20 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
  }
  if(offers.length||assigned.length||covers.length)events.push({text:'✓ Remplacement prévu',kind:'replacement'});
  if(!sunday&&!holiday&&new Date(date+'T12:00:00').getDay()===6)events.push({text:'Samedi ouvert',kind:'neutral'});
- for(const info of events.slice(0,4)){
-   const badge=document.createElement('span');
-   badge.className='simple-day-pill simple-day-'+info.kind;
-   badge.textContent=info.text;
-   cell.insertBefore(badge,details);
- }
  if(tab==='replacement'&&!sunday&&!holiday){
-   const level=replacementStaffingLevel(date);
-   if(level?.minimum===0)events.unshift({text:'🔴 Remplacement prioritaire',kind:'absence'});
-   else if(level?.minimum===1)events.unshift({text:'🟠 Effectif réduit',kind:'neutral'});
    const canOffer=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id)
       ||(window.calendarLeaves||[]).some(l=>l.status==='approved'&&l.user_id!==user?.id&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
-   if(canOffer)events.unshift({text:'🤝 Remplacement possible',kind:'replacement'});
-   for(const info of events.slice(0,2)){
-     const el=document.createElement('span');el.className='simple-day-pill simple-day-'+info.kind;el.textContent=info.text;
-     cell.insertBefore(el,details);
-   }
+   const staffing=replacementStaffingLevel(date);
+   if(canOffer)events.push({text:'🤝 À remplacer',kind:'replacement'});
+   if(staffing?.minimum===0)events.push({text:'Prioritaire',kind:'absence'});
+   else if(staffing?.minimum===1)events.push({text:'Effectif réduit',kind:'neutral'});
+ }
+ const concise=tab==='replacement'
+   ? [...events.filter(x=>x.kind==='absence'),...events.filter(x=>x.kind==='replacement'),...events.filter(x=>x.kind==='neutral')].slice(0,3)
+   : events.slice(0,3);
+ for(const info of concise){
+   const badge=document.createElement('span');badge.className='simple-day-pill simple-day-'+info.kind;
+   badge.textContent=info.text;cell.insertBefore(badge,details);
  }
  const hasDetails=details.children.length>0||!!originalClick||events.length>0;
  if(!hasDetails)return;
