@@ -663,7 +663,7 @@ $('scheduleSave').onclick=async()=>{
 
 let recMonth=new Date(), satMonth=new Date(), team=[], sats=[], swaps=[], satCovers=[], recs=[], scheduleLeaves=[];
 function nm(id){return team.find(p=>p.id===id)?.full_name||'Salarié'}
-const employeePalette=['#1d4ed8','#7c3aed','#16a34a','#9333ea','#ea580c','#0891b2','#be185d','#64748b'];
+const employeePalette=['#1d4ed8','#92400e','#16a34a','#9333ea','#ea580c','#0891b2','#be185d','#64748b'];
 const employeeNames=['Redouane','Ibrahim','Anissa','Sylvain','Laurence','Séverine','Fanaella','Mohamed'];
 function employeeColor(name){const n=String(name||'').trim().toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(n.includes('essaidi')||n.includes('redouane'))return employeePalette[0];const i=employeeNames.findIndex(x=>n.includes(x.toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'')));if(i>=0)return employeePalette[i];let hash=0;for(const c of n)hash=(hash*31+c.charCodeAt(0))>>>0;return employeePalette[hash%employeePalette.length]}
 function employeeTag(name,label){return '<span style="display:inline-block;padding:3px 6px;border-radius:5px;background:'+employeeColor(name)+';color:white;font-weight:600">'+esc(label||name||'Salarié')+'</span>'}
