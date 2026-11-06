@@ -162,7 +162,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
  <span><i class="staffing-dot yellow"></i> Jaune : effectif réduit</span>
  <span><i class="staffing-dot red"></i> Rouge : aucun salarié disponible</span>
 </div>
-<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div id="calendarGrid"></div><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Remplacements validés depuis le début du suivi</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div></div></aside></div>
+<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div id="calendarGrid"></div><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Remplacements validés depuis le début du suivi</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div>
 </section>
 <section id="overview" class="card"><p class="hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>Demandes de l'équipe</h2><p class="muted">Les dates et le statut sont visibles par l'équipe. Les modalités de rémunération restent réservées à la direction.</p><div id="requestsList">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
@@ -289,6 +289,14 @@ async function renderLeastReplacementRanking(){
     const name=document.createElement('span');name.className='replacement-rank-name';name.textContent=p.full_name;
     const count=document.createElement('span');count.className='refusal-count';count.textContent=(refusalMap.get(p.id)||0)+' refus';
     row.append(name,count);refusalList.appendChild(row);
+   }
+   const reasons=$('managerRefusalReasons');reasons.replaceChildren();
+   const recent=(window.managerAssignments||[]).filter(x=>x.response_status==='refused').sort((a,b)=>(b.responded_at||'').localeCompare(a.responded_at||'')).slice(0,15);
+   if(!recent.length)reasons.textContent='Aucun refus enregistré.';
+   for(const a of recent){
+    const row=document.createElement('div');row.className='replacement-rank-row';
+    const name=document.createElement('span');name.textContent=nm(a.replacement_user_id)+' · '+fmt(a.work_date)+' : '+(a.response_comment||'Aucun motif communiqué');
+    row.appendChild(name);reasons.appendChild(row);
    }
   }
  }
@@ -1369,10 +1377,10 @@ if(['overview','request','replacement'].includes(tab)){
   if(tab==='overview'&&['owner','admin'].includes(profile?.role))cell.onclick=()=>openManualAbsencePicker(date);
  }
 }
-for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===date)){
+for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===date&&(a.response_status==='accepted'||a.replacement_user_id===user?.id||['owner','admin'].includes(profile?.role)))){
  if(!['overview','replacement','schedules'].includes(tab))continue;
  const label=document.createElement('div');label.className='manager-assignment-label';
- label.textContent='✓ '+nm(assignment.replacement_user_id)+' remplace · '+String(assignment.start_time).slice(0,5)+'–'+String(assignment.end_time).slice(0,5);
+ label.textContent=(assignment.response_status==='accepted'?'✓ ':assignment.response_status==='refused'?'✕ ':'⌛ ')+nm(assignment.replacement_user_id)+' · '+String(assignment.start_time).slice(0,5)+'–'+String(assignment.end_time).slice(0,5)+(assignment.response_status==='accepted'?' · Accepté':assignment.response_status==='refused'?' · Refusé':' · Réponse attendue');
  cell.appendChild(label);
 }
 grid.appendChild(cell);
