@@ -159,6 +159,33 @@ input,select,textarea{font-size:16px}
 #allBalances .absent-balance-content label{font-size:13px}
 #allBalances .absent-balance-content input{font-size:14px;padding:8px}
 #allBalances .absent-balance-content button{font-size:13px;min-height:36px;padding:8px 12px}
+
+/* Vue d'ensemble : cartes de congés plus lisibles */
+.team-requests-section{padding:24px}
+.team-requests-section h2{font-size:23px;line-height:1.3;margin-bottom:10px}
+.team-requests-intro{font-size:15px;line-height:1.65;color:#41594e;margin:0 0 21px;max-width:850px}
+.team-manager-hint{font-size:14px;background:#eef4f0;color:#3d584a;border-radius:9px;padding:10px 14px;margin:0 0 17px}
+#requestsList{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:15px}
+#requestsList>.team-leave-card{margin:0;padding:19px 20px;background:#fff;border:1.5px solid #d2e0d7;border-radius:14px;box-shadow:0 3px 12px #16382d0d;min-width:0}
+.team-leave-top{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.team-leave-name{font-size:21px;line-height:1.35;color:#173a2e;display:inline-block;margin-right:8px}
+.team-leave-self{display:inline-block;font-weight:650;font-size:12px;padding:4px 8px;border-radius:8px;background:#eaf2ee;color:#2b604a;vertical-align:middle}
+.team-leave-status{display:inline-flex;align-items:center;font-size:13px;font-weight:750;line-height:1.4;padding:7px 10px;border-radius:9px;max-width:100%}
+.team-leave-status-pending{background:#fff2ce;color:#77500b;border:1px solid #e9d69b}
+.team-leave-status-approved{background:#e0f4e8;color:#165637;border:1px solid #b6dcc6}
+.team-leave-status-rejected{background:#fde7e7;color:#8e2828;border:1px solid #f0bfbf}
+.team-leave-period{display:flex;align-items:flex-start;gap:11px;background:#f2f7f3;border-radius:10px;padding:14px 15px;margin:17px 0}
+.team-leave-period>span{font-size:21px}
+.team-leave-period .team-leave-label{font-size:13px;color:#466255;display:block;margin-bottom:3px}
+.team-leave-period strong{color:#173b2d;font-size:17px;line-height:1.4;display:block}
+.team-leave-replacement{font-size:14px;line-height:1.5;color:#385246;margin:0;padding:4px 0 1px}
+.team-leave-replacement strong{color:#183c2d}
+.team-leave-actions{margin-top:14px}
+.team-leave-actions:empty{display:none}
+.team-cancel-button{font-size:14px;font-weight:700;min-height:42px;padding:10px 14px;background:#a72f38;max-width:100%}
+.team-cancel-button:hover{background:#88252d}
+.team-requests-empty{grid-column:1/-1;background:#f1f7f2;color:#395846;border-radius:10px;padding:18px;font-size:15px}
+@media(max-width:650px){.team-requests-section{padding:17px}#requestsList{grid-template-columns:1fr}.team-leave-status{font-size:12px}.team-leave-name{font-size:19px}.team-leave-period strong{font-size:16px}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -214,7 +241,7 @@ input,select,textarea{font-size:16px}
 </div>
 <div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div id="calendarGrid"></div><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div>
 </section>
-<section id="overview" class="card"><p class="hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>Demandes de l'équipe</h2><p class="muted">Les dates et le statut sont visibles par l'équipe. Les modalités de rémunération restent réservées à la direction.</p><div id="requestsList">Chargement…</div></section>
+<section id="overview" class="card team-requests-section"><p class="hint team-manager-hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>📋 Demandes de congés de l'équipe</h2><p class="team-requests-intro">Retrouvez ici les congés demandés par vos collègues et leur état d'avancement. Les détails privés restent réservés aux responsables.</p><div id="requestsList" aria-live="polite">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
 <div class="grid"><div><label>Premier jour d'absence</label><input type="date" id="leaveStart"></div><div><label>Dernier jour d'absence</label><input type="date" id="leaveEnd"></div></div>
 <div id="rangePicker" class="card" style="background:#f7faf8"><strong>Périodes sélectionnées</strong><p class="hint">Clique une fois sur le début, puis sur la fin. Pour une journée seule, sélectionne-la deux fois avec le bouton « Ajouter cette journée ». Recommence pour ajouter une autre période.</p><div id="rangeSummary">Aucune période sélectionnée.</div><button type="button" id="addSingleDay" class="secondary" style="display:none">Terminer cette journée</button><button type="button" id="clearRanges" class="secondary">Effacer la sélection</button></div><p class="hint">Préavis interne : 7 jours pour une absence de 5 jours maximum, 15 jours au-delà. Ces délais ne remplacent pas les dispositions légales ou conventionnelles. La direction vise une réponse sous 7 jours.</p><label>Type de demande</label><select id="absenceKind"><option value="leave">Congés payés</option><option value="recovery">Récupération (1 jour pris = 1 jour déduit)</option></select><div id="recoveryInline" class="hidden"><p class="hint">Les récupérations sont comptées uniquement sur les jours réellement pris, indépendamment des congés payés.</p><label>Date de récupération</label><input id="inlineRecDate" type="date"><label>Commentaire récupération</label><input id="inlineRecNote"><button type="button" id="inlineRecSend">Demander une récupération</button><div id="inlineRecList"></div></div><label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button><button type="button" id="retryLeaveEmail">Tester l’e-mail de ma dernière demande</button></div><div id="emailTestResult" class="hint" aria-live="polite"></div>
@@ -466,7 +493,28 @@ const countBadge=document.getElementById('replacementCount');if(countBadge)count
 if (typeof renderCalendar === 'function') {
   renderCalendar();
 }                    
-$('requestsList').innerHTML=data.map(r=>`<div class="item"><div class="row"><strong>${esc(r.profiles?.full_name||'Salarié')}</strong><span class="badge ${r.status==='approved'?'ok':r.status==='rejected'?'no':'wait'}">${status(r.status)}</span></div><p>${fmt(r.start_date)} → ${fmt(r.end_date)}</p><span class="muted">${r.replacements?.[0]?.profiles?.full_name?'Remplaçant proposé : '+esc(r.replacements[0].profiles.full_name):'En attente d’un remplaçant'}</span></div>`).join('')||'<p class="muted">Aucune demande pour le moment.</p>';
+$('requestsList').innerHTML=(data||[]).map(r=>{
+  const self=r.user_id===user?.id;
+  const currentStatus=r.status==='pending'?'⏳ En attente de validation':r.status==='approved'?'✓ Congés acceptés':r.status==='rejected'?'✕ Demande refusée':status(r.status);
+  const stateClass=r.status==='approved'?'approved':r.status==='rejected'?'rejected':'pending';
+  const replacementName=r.replacements?.[0]?.profiles?.full_name;
+  const replacementInfo=replacementName
+    ? '👥 Remplaçant proposé : <strong>'+esc(replacementName)+'</strong>'
+    : r.replacement_required===false
+      ? '✓ Aucun remplaçant nécessaire'
+      : r.replacement_required===true
+        ? '👥 Remplaçant à trouver'
+        : 'ℹ️ Remplacement non encore défini';
+  return `<article class="item team-leave-card team-leave-${stateClass}">
+    <div class="team-leave-top">
+      <div><strong class="team-leave-name">${esc(r.profiles?.full_name||'Salarié')}</strong>${self?'<span class="team-leave-self">Votre demande</span>':''}</div>
+      <span class="team-leave-status team-leave-status-${stateClass}">${esc(currentStatus)}</span>
+    </div>
+    <div class="team-leave-period"><span aria-hidden="true">📅</span><div><span class="team-leave-label">Dates des congés</span><strong>Du ${fmt(r.start_date)} au ${fmt(r.end_date)}</strong></div></div>
+    <p class="team-leave-replacement">${replacementInfo}</p>
+    <div class="team-leave-actions"></div>
+  </article>`;
+}).join('')||'<p class="team-requests-empty">Aucune demande de congés pour le moment.</p>';
 $('replaceLeave').innerHTML=data.filter(r=>r.user_id!==user.id&&r.status==='approved'&&(!r.replacements||!r.replacements.length)).map(r=>`<option value="${r.id}">${esc(r.profiles?.full_name||'Salarié')} — ${fmt(r.start_date)} au ${fmt(r.end_date)}</option>`).join('')}
 $('retryLeaveEmail').onclick=()=>{ $('emailTestResult').textContent='Les notifications sont désormais envoyées automatiquement par Supabase aux responsables. Aucun renvoi manuel nécessaire.'; };
 $('sendLeave').onclick=async()=>{const ranges=leaveRanges.length?leaveRanges:($('leaveStart').value&&$('leaveEnd').value?[[$('leaveStart').value,$('leaveEnd').value]]:[]);if(pendingRangeStart){notice('Termine la période en cliquant sur son dernier jour.',true);return}if(!ranges.length||ranges.some(r=>r[1]<r[0]||countedLeaveDates(r[0],r[1]).length===0)){notice('Sélectionne une ou plusieurs périodes valides.',true);return}const today=new Date();today.setHours(0,0,0,0);for(const [start,end] of ranges){const days=countedLeaveDates(start,end).length,noticeDays=Math.round((new Date(start+'T00:00:00')-today)/86400000);if(noticeDays<(days<=5?7:15)){notice('Préavis interne insuffisant pour la période du '+fmt(start)+' : '+(days<=5?7:15)+' jours requis. Contacte Ibrahim pour une urgence.',true);return}}let count=0;for(const [start,end] of ranges){const {data:createdLeave,error}=await sb.from('leave_requests').insert({user_id:user.id,start_date:start,end_date:end,note:$('leaveNote').value}).select('id').single();if(!error&&createdLeave?.id){$('emailTestResult').textContent='Demande enregistrée. Notification automatique programmée pour les responsables.';}if(error){notice(count+' période(s) envoyée(s) ; échec sur '+fmt(start)+' : '+error.message,true);await refresh();return}count++}leaveRanges=[];pendingRangeStart=null;rangeMode=false;updateRangeSummary();renderCalendar();$('leaveNote').value='';notice(count+' période(s) envoyée(s).');await refresh()};
@@ -1576,15 +1624,15 @@ renderRequests = async function () {
   await ancienRenderRequests();
 
   const demandes = window.calendarLeaves || [];
-  const cartes = document.querySelectorAll('#requestsList .item');
+  const cartes = document.querySelectorAll('#requestsList .team-leave-card');
 
   demandes.forEach((demande, index) => {
     if (demande.user_id !== user?.id || demande.status !== 'pending') return;
 
     const bouton = document.createElement('button');
-    bouton.textContent = 'Annuler ma demande';
+    bouton.textContent = '✕ Annuler cette demande';
     bouton.className = 'danger';
-    bouton.style.marginTop = '10px';
+    bouton.classList.add('team-cancel-button');
 
     bouton.onclick = async () => {
       if (!confirm('Voulez-vous annuler cette demande ?')) return;
@@ -1609,7 +1657,7 @@ renderRequests = async function () {
       notice('Demande annulée avec succès.');
     };
 
-    cartes[index]?.appendChild(bouton);
+    (cartes[index]?.querySelector('.team-leave-actions') || cartes[index])?.appendChild(bouton);
   });
 };
 </script></body></html>
