@@ -1250,6 +1250,8 @@ window.openLeaveAssignmentDialog=async leaveId=>{
   if(error){status.textContent=error.message;status.classList.add('error');save.disabled=false;return}
   const savedDate=chosenDate;
   await loadManagerAssignments();
+  await renderAdmin();
+  renderCalendar();
   status.textContent='✓ '+nameOf(employee.value)+' désigné(e) pour le '+fmt(savedDate)+'. L’affectation est visible dans son espace personnel.';
   status.classList.remove('error');
   render();
