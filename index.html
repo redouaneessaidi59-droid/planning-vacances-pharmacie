@@ -391,7 +391,7 @@ tr:nth-child(even) td{background:#fafcfb}
  <span><i class="staffing-dot yellow"></i> Jaune : effectif réduit</span>
  <span><i class="staffing-dot red"></i> Rouge : aucun salarié disponible</span>
 </div>
-<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div id="calendarGrid"></div><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div>
+<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div id="calendarGrid"></div><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden" hidden aria-hidden="true"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div>
 </section>
 <section id="overview" class="card team-requests-section"><p class="hint team-manager-hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>📋 Demandes de congés de l'équipe</h2><p class="team-requests-intro">Retrouvez ici les congés demandés par vos collègues et leur état d'avancement. Les détails privés restent réservés aux responsables.</p><div id="requestsList" aria-live="polite">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>📝 Demander des congés</h2><p class="section-lead">Choisissez les dates souhaitées, ajoutez un commentaire si nécessaire, puis envoyez la demande à vos responsables.</p>
@@ -533,6 +533,13 @@ const managementOnlyTabs=new Set(['schedules','availability','recovery','admin',
 function isManagementUser(){return profile?.role==='owner'||profile?.role==='admin'}
 function applyTabPermissions(){
   const manager=isManagementUser();
+  const refusalPanel=document.getElementById('managerRefusalRanking');
+  if(refusalPanel){
+    refusalPanel.classList.toggle('hidden',!manager);
+    refusalPanel.hidden=!manager;
+    refusalPanel.setAttribute('aria-hidden',String(!manager));
+    if(!manager){document.getElementById('managerRefusalList')?.replaceChildren();document.getElementById('managerRefusalReasons')?.replaceChildren();}
+  }
   document.querySelectorAll('[data-tab]').forEach(button=>{
     const accessible=manager||staffVisibleTabs.has(button.dataset.tab);
     button.classList.toggle('hidden',!accessible);
@@ -586,9 +593,13 @@ async function renderLeastReplacementRanking(){
   const count=document.createElement('span');count.className='replacement-rank-count';count.textContent=counts.get(p.id)+' remplac.';
   line.append(medal,name,count);list.appendChild(line);
  }
- const manager=['owner','admin'].includes(profile?.role);
+ const manager=isManagementUser();
  const refusalPanel=$('managerRefusalRanking'),refusalList=$('managerRefusalList');
+ const reasonsPanel=$('managerRefusalReasons');
  refusalPanel.classList.toggle('hidden',!manager);
+ refusalPanel.hidden=!manager;
+ refusalPanel.setAttribute('aria-hidden',String(!manager));
+ if(!manager){refusalList.replaceChildren();reasonsPanel.replaceChildren();}
  if(manager){
   const {data:refusals,error:refusalError}=await sb.rpc('manager_refusal_counts');
   refusalList.replaceChildren();
