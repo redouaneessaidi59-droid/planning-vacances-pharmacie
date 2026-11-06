@@ -968,7 +968,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
 
     window.pendingAdminLeaveRequests=rs||[];
     $('adminRequests').innerHTML = (rs || []).map(r => {
-      const remplacement = replacements.find(x => x.leave_id === r.id);
+      const remplacement = replacements.find(x => x.leave_id === r.id && x.confirmed_at) || replacements.find(x => x.leave_id === r.id);
       const personne = remplacement
         ? replacementProfiles.find(p => p.id === remplacement.replacement_user_id)
         : null;
@@ -1007,7 +1007,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
           `}
 
           <div class="actions admin-decision-actions">
-            <button class="secondary" onclick="setReplacementRequirement('${r.id}',true)">👥 Exiger un remplaçant</button>
+            <button class="secondary" onclick="setReplacementRequirement('${r.id}',true)" ${r.replacement_required===true?'disabled':''}>${r.replacement_required===true?'✓ Recherche de remplaçant activée':'👥 Exiger un remplaçant'}</button>
             <button onclick="approveWithoutReplacement('${r.id}')">✓ Accepter sans remplaçant</button>
             <button class="danger" onclick="decide('${r.id}','rejected')">✕ Refuser la demande</button>
           </div>
