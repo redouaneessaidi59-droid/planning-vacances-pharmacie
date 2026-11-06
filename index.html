@@ -307,17 +307,17 @@ function renderAssignmentNotifications(){
  const mine=(window.managerAssignments||[]).filter(x=>x.replacement_user_id===user?.id).sort((a,b)=>b.work_date.localeCompare(a.work_date));
  for(const a of mine){
   const p=document.createElement('div');p.className='assignment-notification';
-  const message=document.createElement('div');message.textContent='📣 La direction te propose un remplacement le '+fmt(a.work_date)+' de '+String(a.start_time).slice(0,5)+' à '+String(a.end_time).slice(0,5)+'.';p.appendChild(message);
+  const message=document.createElement('div');message.textContent='📣 La direction t’a désigné pour remplacer le '+fmt(a.work_date)+' de '+String(a.start_time).slice(0,5)+' à '+String(a.end_time).slice(0,5)+'.';p.appendChild(message);
   const state=document.createElement('div');state.className='response-status';
-  state.textContent=a.response_status==='accepted'?'✓ Remplacement accepté':a.response_status==='refused'?'✕ Remplacement refusé':'En attente de ta réponse';
+  state.textContent=a.response_status==='accepted'?'✓ Affectation confirmée (refus possible avant le début)':a.response_status==='refused'?'✕ Remplacement refusé':'Prévenance inférieure à 7 jours : confirmation demandée';
   p.appendChild(state);
-  if(a.response_status==='pending'){
+  if(a.response_status!=='refused' && (a.work_date+'T'+String(a.start_time).slice(0,5))>new Date().toLocaleString('sv-SE',{timeZone:'Europe/Paris'}).replace(' ','T')){
    const actions=document.createElement('div');actions.className='assignment-response-actions';
    const accept=document.createElement('button');accept.type='button';accept.textContent='Accepter';
    accept.onclick=async()=>{accept.disabled=true;const {error}=await sb.rpc('respond_manager_assignment',{p_assignment:a.id,p_response:'accepted',p_comment:null});if(error){notice(error.message,true);accept.disabled=false;return}await refresh();notice('Tu as accepté ce remplacement. Ta réponse est enregistrée pour la direction.')};
    const reject=document.createElement('button');reject.type='button';reject.className='secondary';reject.textContent='Refuser';
    reject.onclick=()=>openAssignmentRefusalDialog(a);
-   actions.append(accept,reject);p.appendChild(actions);
+   if(a.response_status==='pending')actions.appendChild(accept);actions.appendChild(reject);p.appendChild(actions);
   }
   box.appendChild(p);
  }
@@ -1158,9 +1158,9 @@ async function showManagerAssignInline(cell,targetId,date,isManual){
  select.onchange=update;update();
  const mode=document.createElement('select');mode.innerHTML='<option value="recovery">Heures à récupérer</option><option value="paid">Heures à payer</option>';label('Compensation',mode);
  const save=document.createElement('button');save.type='button';save.textContent='Confirmer l’affectation';save.style.marginTop='10px';
- save.onclick=async e=>{e.stopPropagation();const free=replacementFreeWindows(date,select.value);if(!free?.some(x=>start.value>=x.start&&end.value<=x.end)){notice('Choisis un créneau libre du salarié.',true);return}if(!confirm('Affecter '+select.selectedOptions[0].textContent+' le '+fmt(date)+' de '+start.value+' à '+end.value+' ?'))return;save.disabled=true;
+ save.onclick=async e=>{e.stopPropagation();const free=replacementFreeWindows(date,select.value);if(!free?.some(x=>start.value>=x.start&&end.value<=x.end)){notice('Choisis un créneau libre du salarié.',true);return}const parisNow=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Paris'}).replace(' ','T');const advance=(new Date(date+'T'+start.value)-new Date(parisNow))/86400000;const noticeRule=advance>=7?'Prévenance d’au moins 7 jours : affectation confirmée automatiquement, avec possibilité de refus.':'Prévenance inférieure à 7 jours : le salarié devra accepter ou refuser.';if(!confirm('Affecter '+select.selectedOptions[0].textContent+' le '+fmt(date)+' de '+start.value+' à '+end.value+' ?\n'+noticeRule))return;save.disabled=true;
  const {error}=await sb.rpc('assign_manager_replacement',{p_type:isManual?'manual':'leave',p_target:targetId,p_user:select.value,p_date:date,p_start:start.value,p_end:end.value,p_mode:mode.value});
- if(error){notice(error.message,true);save.disabled=false;return}await refresh();notice('Affectation enregistrée. Le salarié la verra dans ses notifications sur le site. L’envoi par e-mail reste à configurer.')};
+ if(error){notice(error.message,true);save.disabled=false;return}await refresh();notice('Affectation enregistrée. '+noticeRule+' Notification visible dans son espace personnel. L’envoi par e-mail reste à configurer.')};
  box.appendChild(save);
  const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuler';cancel.style.marginLeft='8px';cancel.onclick=e=>{e.stopPropagation();box.remove()};box.appendChild(cancel);cell.appendChild(box);
 }
