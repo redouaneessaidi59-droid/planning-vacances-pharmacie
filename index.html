@@ -1403,52 +1403,80 @@ async function requestSaturdayCover(date,start_time,end_time){
  const {error}=await sb.from('saturday_cover_requests').insert({saturday_date:date,requester_id:user.id,start_time,end_time});
  if(error)msgError(error);else{notice('Demande publiée, visible par toute l’équipe.');await renderSaturdays()}
 }
+function openSaturdayDialog(title,subtitle){
+ document.querySelectorAll('dialog.saturday-action-dialog[open]').forEach(d=>d.close());
+ const dialog=document.createElement('dialog');dialog.className='saturday-action-dialog';
+ const header=document.createElement('div');header.className='saturday-dialog-header';
+ const wrap=document.createElement('div');
+ const h=document.createElement('h2');h.textContent=title;
+ const p=document.createElement('p');p.textContent=subtitle||'';
+ wrap.append(h,p);
+ const close=document.createElement('button');close.type='button';close.className='secondary';close.textContent='Fermer';
+ close.onclick=()=>dialog.close();header.append(wrap,close);
+ const body=document.createElement('div');body.className='saturday-dialog-body';
+ dialog.append(header,body);document.body.appendChild(dialog);
+ dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+ dialog.onclick=e=>{if(e.target===dialog)dialog.close()};
+ dialog.showModal();
+ return {dialog,body};
+}
 function saturdaySlotMenu(cell,date){
- const old=cell.querySelector('.sat-inline-menu');if(old){old.remove();return}
  const slots=saturdayMyShifts(date);
- const menu=document.createElement('div');menu.className='sat-inline-menu';
- menu.style.cssText='background:#fff;border:1px solid #bbb;border-radius:8px;padding:10px;margin-top:6px;color:#222;position:relative;z-index:3';
- const title=document.createElement('strong');title.textContent='Demander à être remplacé';menu.appendChild(title);
- const choices=document.createElement('div');choices.style.cssText='display:flex;flex-direction:column;gap:7px;margin:9px 0';
+ const {dialog,body}=openSaturdayDialog('📅 Demander un remplacement',new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+ const lead=document.createElement('p');lead.className='saturday-dialog-lead';lead.textContent='Sélectionne les horaires du samedi pour lesquels tu souhaites trouver un remplaçant.';body.appendChild(lead);
+ const choices=document.createElement('div');choices.className='saturday-slot-choices';
  for(const slot of slots){
-  const existing=satCovers.some(x=>x.saturday_date===date&&x.requester_id===user.id&&x.start_time.slice(0,5)===slot.start&&x.end_time.slice(0,5)===slot.end&&['open','pending_manager','approved'].includes(x.status));
-  const label=document.createElement('label');label.style.cssText='display:flex;align-items:center;gap:8px;cursor:pointer';
-  const check=document.createElement('input');check.type='checkbox';check.value=slot.start+'|'+slot.end;check.disabled=existing;check.style.width='auto';
-  label.appendChild(check);label.appendChild(document.createTextNode(slot.start+'–'+slot.end+(existing?' (déjà demandé)':'')));choices.appendChild(label);
+  const existing=satCovers.some(x=>x.saturday_date===date&&x.requester_id===user.id&&x.start_time.slice(0,5)===slot.start&&x.end_time.slice(0,5)&&['open','pending_manager','approved'].includes(x.status));
+  const label=document.createElement('label');label.className='saturday-slot-option';
+  const check=document.createElement('input');check.type='checkbox';check.value=slot.start+'|'+slot.end;check.disabled=existing;
+  label.append(check,document.createTextNode(slot.start+' – '+slot.end+(existing?' · Déjà demandé':'')));choices.appendChild(label);
  }
- menu.appendChild(choices);
- const confirm=document.createElement('button');confirm.type='button';confirm.textContent='Confirmer la demande';confirm.disabled=true;
+ if(!slots.length){const empty=document.createElement('p');empty.textContent='Aucun créneau de travail renseigné pour ce samedi.';body.appendChild(empty);}
+ body.appendChild(choices);
+ const actions=document.createElement('div');actions.className='saturday-dialog-actions';
+ const confirm=document.createElement('button');confirm.type='button';confirm.textContent='Envoyer la demande';confirm.disabled=true;
  const update=()=>{confirm.disabled=!choices.querySelector('input:checked')};choices.addEventListener('change',update);
- confirm.onclick=async e=>{
-  e.stopPropagation();
-  const selected=[...choices.querySelectorAll('input:checked')].map(x=>x.value.split('|'));
-  if(!selected.length)return;
+ confirm.onclick=async()=>{
+  const selected=[...choices.querySelectorAll('input:checked')].map(x=>x.value.split('|'));if(!selected.length)return;
   confirm.disabled=true;confirm.textContent='Enregistrement…';
   const rows=selected.map(([start_time,end_time])=>({saturday_date:date,requester_id:user.id,start_time,end_time}));
   const {error}=await sb.from('saturday_cover_requests').insert(rows);
-  if(error){msgError(error);confirm.textContent='Confirmer la demande';update()}
-  else{notice(selected.length+' créneau(x) demandé(s).');await renderSaturdays()}
+  if(error){msgError(error);confirm.textContent='Envoyer la demande';update();return}
+  dialog.close();notice(selected.length+' créneau(x) demandé(s).');await renderSaturdays();
  };
- menu.appendChild(confirm);
- const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuler';cancel.style.marginLeft='6px';cancel.onclick=e=>{e.stopPropagation();menu.remove()};menu.appendChild(cancel);
- cell.appendChild(menu);
+ const cancel=document.createElement('button');cancel.className='secondary';cancel.type='button';cancel.textContent='Annuler';cancel.onclick=()=>dialog.close();
+ actions.append(confirm,cancel);body.appendChild(actions);
 }
 window.actSaturdayCover=async(id,action)=>{
  if(action==='volunteer'){
-  const target=document.querySelector('[data-cover-id="'+id+'"]');
-  const menu=document.createElement('div');menu.style.cssText='background:white;color:#222;padding:8px;border:1px solid #bbb;border-radius:8px;margin-top:5px';
-  const select=document.createElement('select');select.innerHTML='<option value="recovery">Ajouter les heures à récupérer</option><option value="paid">Ajouter les heures à payer</option>';menu.appendChild(select);
-  const btn=document.createElement('button');btn.textContent='Confirmer';btn.onclick=async e=>{e.stopPropagation();btn.disabled=true;await submitSaturdayCoverAction(id,action,select.value)};menu.appendChild(btn);
-  const cancel=document.createElement('button');cancel.textContent='Annuler';cancel.onclick=e=>{e.stopPropagation();menu.remove()};menu.appendChild(cancel);
-  if(target){target.querySelector('.sat-cover-choice')?.remove();menu.className='sat-cover-choice';target.appendChild(menu)}
-  else {$('satRequests').prepend(menu)}
+  const cover=(satCovers||[]).find(x=>x.id===id);
+  if(!cover||cover.status!=='open'||cover.requester_id===user?.id){notice('Cette demande n’est plus disponible.',true);return}
+  document.querySelectorAll('dialog.simple-calendar-dialog[open]').forEach(d=>d.close());
+  const {dialog,body}=openSaturdayDialog('🤝 Proposer un remplacement',fmt(cover.saturday_date)+' · '+shortTime(cover.start_time)+'–'+shortTime(cover.end_time));
+  const lead=document.createElement('p');lead.className='saturday-dialog-lead';lead.textContent='Remplacer '+nm(cover.requester_id)+'. Choisis comment comptabiliser les heures de ce remplacement.';body.appendChild(lead);
+  const label=document.createElement('label');label.textContent='Compensation confidentielle';
+  const select=document.createElement('select');select.innerHTML='<option value="recovery">Heures à récupérer</option><option value="paid">Heures à payer</option>';label.appendChild(select);body.appendChild(label);
+  const actions=document.createElement('div');actions.className='saturday-dialog-actions';
+  const confirm=document.createElement('button');confirm.type='button';confirm.textContent='Envoyer ma proposition';
+  confirm.onclick=async()=>{confirm.disabled=true;const ok=await submitSaturdayCoverAction(id,action,select.value);if(ok)dialog.close();else confirm.disabled=false};
+  const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuler';cancel.onclick=()=>dialog.close();
+  actions.append(confirm,cancel);body.appendChild(actions);
   return;
+ }
+ if(action==='approve'||action==='reject'||action==='cancel'){
+  const cover=(satCovers||[]).find(x=>x.id===id);
+  const {dialog,body}=openSaturdayDialog(action==='approve'?'Valider le remplacement':action==='reject'?'Refuser le remplacement':'Annuler ma demande',cover?fmt(cover.saturday_date)+' · '+shortTime(cover.start_time)+'–'+shortTime(cover.end_time):'');
+  const question=document.createElement('p');question.className='saturday-dialog-lead';question.textContent='Confirmer cette décision ?';body.appendChild(question);
+  const actions=document.createElement('div');actions.className='saturday-dialog-actions';
+  const yes=document.createElement('button');yes.textContent='Confirmer';if(action==='reject'||action==='cancel')yes.className='danger';
+  yes.onclick=async()=>{yes.disabled=true;const ok=await submitSaturdayCoverAction(id,action,null);if(ok)dialog.close();else yes.disabled=false};
+  const no=document.createElement('button');no.className='secondary';no.textContent='Retour';no.onclick=()=>dialog.close();actions.append(yes,no);body.appendChild(actions);return;
  }
  await submitSaturdayCoverAction(id,action,null);
 };
 async function submitSaturdayCoverAction(id,action,mode){
  const {error}=await sb.rpc('act_on_saturday_cover',{p_id:id,p_action:action,p_mode:mode});
- if(error)msgError(error);else{notice('Demande mise à jour.');await renderSaturdays();await showRecoveryHours();renderCalendar()}
+ if(error){msgError(error);return false}notice('Demande mise à jour.');await renderSaturdays();await showRecoveryHours();renderCalendar();return true
 }
 $('satMode').onchange=()=>show('satExchangeWrap',$('satMode').value==='exchange');
 $('satSend').onclick=async()=>{
