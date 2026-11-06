@@ -109,13 +109,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
  .schedule-lane{min-width:105px}
  .schedule-track{width:34px}
 }
-</style>
+#actionFeedback{border:0;border-radius:18px;padding:0;width:min(92vw,430px);max-width:430px;box-shadow:0 22px 80px #0005;color:#18312b;background:#fff}#actionFeedback::backdrop{background:rgba(11,30,25,.62)}.feedback-content{text-align:center;padding:30px 25px 26px}.feedback-content h2{margin:8px 0 12px;font-size:1.4rem}.feedback-content p{font-size:1.05rem;line-height:1.5;white-space:pre-line;overflow-wrap:anywhere}.feedback-symbol{display:grid;place-items:center;width:56px;height:56px;margin:auto;border-radius:50%;background:#e4f5e9;color:#16733d;font-size:30px;font-weight:bold}#actionFeedback[data-error="true"] .feedback-symbol{background:#fde9e7;color:#b42318}#actionFeedbackOk{min-width:130px;margin-top:14px;font-size:1rem}</style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
 <body>
 <header><h1>📅 Planning Vacances</h1><p>Congés, remplacements et récupérations — équipe officinale</p></header>
 <main>
-<div id="notice"></div>
+<div id="notice" class="hidden" aria-hidden="true"></div><dialog id="actionFeedback" aria-labelledby="actionFeedbackTitle" aria-describedby="actionFeedbackText"><div class="feedback-content"><div id="actionFeedbackSymbol" class="feedback-symbol" aria-hidden="true">✓</div><h2 id="actionFeedbackTitle">Confirmation</h2><p id="actionFeedbackText"></p><button id="actionFeedbackOk" type="button">OK</button></div></dialog>
 <section id="config" class="card hidden">
 <h2>Connexion à la base de données</h2>
 <p class="muted">Renseigne les deux paramètres publics de ton projet Supabase. Ils ne sont pas des mots de passe. Ne partage jamais la clé « service_role ».</p>
@@ -196,7 +196,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <script>
 let sb=null,user=null,profile=null,tab="overview";
 const $=id=>document.getElementById(id);
-function notice(msg,error=false){$('notice').textContent=msg;$('notice').style.display='block';$('notice').className=error?'error':''}
+function notice(msg,error=false){const dialog=$('actionFeedback');$('actionFeedbackTitle').textContent=error?'Action non effectuée':'Confirmation';$('actionFeedbackSymbol').textContent=error?'!':'✓';$('actionFeedbackText').textContent=String(msg||'');dialog.dataset.error=String(!!error);if(!dialog.open)dialog.showModal();$('actionFeedbackOk').focus()}
+$('actionFeedbackOk').onclick=()=>$('actionFeedback').close();
 function show(id,on){$(id).classList.toggle('hidden',!on)}
 function cfg(){return {url:'https://qdmjlvxvlgwfipzxpcoe.supabase.co',key:'sb_publishable_c7-enZ9x_7HVpHa19_puSw_FWm_AIbs'}}
 function init(){const c=cfg();$('supabaseUrl').value=c.url;$('supabaseKey').value=c.key;show('config',false);show('auth',true);connect(c.url,c.key)}
