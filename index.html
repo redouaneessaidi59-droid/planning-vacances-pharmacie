@@ -174,7 +174,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 <section id="saturdays" class="card hidden"><h2>Gestion des samedis</h2><p class="hint">Clique sur ta case du samedi dans le calendrier ci-dessus pour demander un remplaçant. Les collègues peuvent se proposer directement sur la case encadrée en rouge.</p><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
 <section id="messages" class="card hidden"><h2>Messagerie privée avec Ibrahim</h2><div id="messageThread"></div><div id="messageRecipientWrap" class="hidden"><label>Répondre à</label><select id="messageRecipient"></select></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
 <section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
-<section id="paidHours" class="card hidden"><h2>Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
+<section id="paidHours" class="card hidden"><h2>Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>Soldes individuels (jours)</h3><div id="allBalances"></div><h3 style="margin-top:24px">Demandes à valider</h3><div id="adminRequests"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
   <button id="createTeamBtn" type="button">Créer les comptes de l'équipe</button>
@@ -238,10 +238,10 @@ let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
 show('adminTab',p.role==='owner'||p.role==='admin');show('paidHoursTab',p.role==='owner'||p.role==='admin');show('recoveryManagerTab',p.role==='owner'||p.role==='admin');await refresh();await renderSchedules()}
 async function loadApprovedAbsences(){const {data,error}=await sb.rpc('list_approved_recovery_absences');if(error){window.approvedAbsences=null;notice('Impossible de charger les récupérations validées : '+error.message,true);return}window.approvedAbsences=(data||[]).map(x=>({user_id:x.user_id,date:x.absence_date,start:x.start_time,end:x.end_time}))}
-async function loadManualAbsences(){const {data,error}=await sb.from('manual_absences').select('id,employee_id,absence_date');if(error){notice('Absences signalées : '+error.message,true);return}window.manualAbsences=data||[]}
+async function loadManualAbsences(){const [a,b]=await Promise.all([sb.from('manual_absences').select('id,employee_id,absence_date'),sb.from('manual_absence_replacements').select('*')]);if(a.error||b.error){notice('Absences et remplacements : '+(a.error||b.error).message,true);return}window.manualAbsences=a.data||[];window.manualReplacementOffers=b.data||[]}
 async function openManualAbsencePicker(date){if(!['owner','admin'].includes(profile?.role))return;await getTeam();const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:#0008;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';const panel=document.createElement('div');panel.style.cssText='background:white;padding:22px;border-radius:12px;max-width:430px;width:100%;box-shadow:0 10px 35px #0003';const heading=document.createElement('h3');heading.textContent='Signaler une absence — '+fmt(date);const label=document.createElement('label');label.textContent='Salarié absent';const select=document.createElement('select');select.style.width='100%';for(const p of team){const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.full_name;select.appendChild(opt)}const hint=document.createElement('p');hint.className='muted';hint.textContent='L’absence apparaît dans la couleur du salarié, sans déduire automatiquement ses congés payés.';const actions=document.createElement('div');actions.className='actions';const cancel=document.createElement('button');cancel.className='secondary';cancel.textContent='Annuler';cancel.onclick=()=>overlay.remove();const save=document.createElement('button');save.textContent='Signaler l’absence';save.onclick=async()=>{save.disabled=true;const {error}=await sb.from('manual_absences').insert({employee_id:select.value,absence_date:date,created_by:user.id});if(error){notice(error.code==='23505'?'Cette absence est déjà signalée.':error.message,true);save.disabled=false;return}overlay.remove();await loadManualAbsences();renderCalendar();notice('Absence ajoutée au planning.')};actions.append(cancel,save);const existing=(window.manualAbsences||[]).filter(a=>a.absence_date===date);if(existing.length){const section=document.createElement('div');section.style.marginTop='14px';const title=document.createElement('strong');title.textContent='Absences déjà signalées';section.appendChild(title);for(const absence of existing){const line=document.createElement('div');line.className='row';line.style.marginTop='8px';const name=document.createElement('span');name.textContent=nm(absence.employee_id);name.style.color=employeeColor(nm(absence.employee_id));const remove=document.createElement('button');remove.className='secondary';remove.textContent='Retirer l’absence';remove.onclick=async()=>{overlay.remove();await removeManualAbsence(absence)};line.append(name,remove);section.appendChild(line)}panel.appendChild(section)}panel.append(heading,label,select,hint,actions);overlay.appendChild(panel);overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};document.body.appendChild(overlay)}
 async function removeManualAbsence(absence){if(!['owner','admin'].includes(profile?.role)||!confirm('Retirer cette absence du '+fmt(absence.absence_date)+' ?'))return;const {error}=await sb.from('manual_absences').delete().eq('id',absence.id);if(error){notice(error.message,true);return}await loadManualAbsences();renderCalendar();notice('Absence retirée du planning.')}
-async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences(),loadManualAbsences()]);renderCalendar();await showRecoveryHours();if(profile.role==='owner'||profile.role==='admin')await renderAdmin()}
+async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences(),loadManualAbsences()]);renderCalendar();await showRecoveryHours();if(profile.role==='owner'||profile.role==='admin'){await renderAdmin();await renderManualReplacementApprovals()}}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='recovery'&&!['owner','admin'].includes(profile?.role))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','admin','paidHours'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;renderCalendar();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){$('calendarGrid').innerHTML='<p class="schedule-alert">Chargement des jauges verticales…</p>';renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages();if(tab==='paidHours')renderPaidHours()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
@@ -724,8 +724,29 @@ async function renderReplacementNeeds(){
  const recoveries=await sb.from('recovery_requests').select('id,user_id,recovery_date,status').eq('status','pending');
  if(recoveries.error){$('replacementNeeds').textContent='Impossible de charger les récupérations : '+recoveries.error.message;return}
  const needs=(recoveries.data||[]).filter(x=>x.user_id!==user?.id);
- $('replacementNeeds').innerHTML='<strong>Absences à couvrir : '+(leaves.length+manual.length)+'</strong><p class="hint">Clique sur une demande de congé pour proposer tes horaires. Les absences signalées manuellement sont comptées dans les effectifs ; leur remplacement doit encore être enregistré par la direction.</p>'+
+ $('replacementNeeds').innerHTML='<strong>Absences à couvrir : '+(leaves.length+manual.length)+'</strong><p class="hint">Clique sur une demande de congé pour proposer tes horaires. Clique sur une absence, y compris une absence ajoutée par la direction, pour proposer un remplacement sur tes créneaux libres.</p>'+
  (needs.length?'<h3>Récupérations demandées par les collègues</h3>'+needs.map(x=>'<div class="item">'+esc(nm(x.user_id))+' souhaite récupérer le '+fmt(x.recovery_date)+' — besoin éventuel de remplacement. <span class="muted">Proposition pour récupération : en cours de mise en place.</span></div>').join(''):'');
+}
+async function renderManualReplacementApprovals(){
+ if(!['owner','admin'].includes(profile?.role))return;
+ const target=$('manualReplacementApprovals');
+ if(!target)return;
+ const offers=(window.manualReplacementOffers||[]).filter(x=>x.status==='pending');
+ target.replaceChildren();
+ if(!offers.length){target.textContent='Aucune proposition de remplacement d’absence manuelle en attente.';return}
+ for(const offer of offers){
+  const absent=(window.manualAbsences||[]).find(x=>x.id===offer.absence_id);
+  const line=document.createElement('div');line.className='item';
+  const info=document.createElement('p');
+  info.textContent=nm(offer.replacement_user_id)+' propose de remplacer '+nm(absent?.employee_id)+' le '+fmt(offer.work_date)+' de '+String(offer.start_time).slice(0,5)+' à '+String(offer.end_time).slice(0,5)+' ('+(offer.mode==='paid'?'heures à payer':'heures à récupérer')+').';
+  line.appendChild(info);
+  for(const [status,label] of [['approved','Valider'],['rejected','Refuser']]){
+   const btn=document.createElement('button');btn.type='button';btn.textContent=label;if(status==='rejected')btn.className='secondary';
+   btn.onclick=async()=>{btn.disabled=true;const {error}=await sb.from('manual_absence_replacements').update({status,decided_by:user.id,decided_at:new Date().toISOString()}).eq('id',offer.id).eq('status','pending');if(error){notice(error.message,true);btn.disabled=false;return}await refresh();notice(status==='approved'?'Remplacement validé.':'Proposition refusée.')};
+   line.appendChild(btn);
+  }
+  target.appendChild(line);
+ }
 }
 async function renderRecovery(){
  try{
@@ -1026,7 +1047,7 @@ function replacementFreeWindows(date,employeeId){
  const clock=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
  return windows.map(([start,end])=>({start:clock(start),end:clock(end)}));
 }
-function showReplacementInline(cell,leaveId,date){
+function showReplacementInline(cell,leaveId,date,isManual=false){
  document.querySelectorAll('.replacement-inline').forEach(x=>x.remove());
  const box=document.createElement('div');box.className='replacement-inline';box.style.cssText='background:#fff;color:#172b2a;border:1px solid #a6b4b0;border-radius:8px;padding:12px;margin-top:5px;position:relative;z-index:5';
  const title=document.createElement('strong');title.textContent='Remplacement du '+fmt(date);box.appendChild(title);
@@ -1058,6 +1079,11 @@ function showReplacementInline(cell,leaveId,date){
   btn('Valider et envoyer ma proposition',async b=>{
    b.disabled=true;
    const freeNow=replacementFreeWindows(date,user.id);if(!freeNow||!freeNow.some(x=>start>=x.start&&end<=x.end)){notice('Ce remplacement chevauche ton planning habituel ou le planning est indisponible.',true);b.disabled=false;return}
+   if(isManual){
+    const {error}=await sb.rpc('offer_manual_absence_replacement',{p_absence_id:leaveId,p_start:start,p_end:end,p_mode:mode});
+    if(error){notice(error.message,true);b.disabled=false;return}
+    await refresh();notice('Ta proposition de remplacement a bien été transmise à la direction. En attente de validation.');return;
+   }
    const {error}=await sb.rpc('propose_replacement',{p_leave_id:leaveId,p_mode:mode,p_recovery_date:null});
    if(error){notice(error.message,true);b.disabled=false;return}
    const {error:se}=await sb.from('replacement_work_slots').insert({leave_id:leaveId,replacement_user_id:user.id,work_date:date,start_time:start,end_time:end});
@@ -1197,11 +1223,21 @@ if(['overview','request','replacement'].includes(tab)){
    const e=document.createElement('div');e.className='calendar-event calendar-approved';
    e.style.background=employeeColor(nm(absence.employee_id));e.style.color='white';
    e.textContent=nm(absence.employee_id)+' · Absent';
-   if(['owner','admin'].includes(profile?.role)){
+   if(tab==='replacement'&&absence.employee_id!==user?.id){
+    e.style.cursor='pointer';e.title='Cliquer pour proposer un remplacement';
+    e.onclick=ev=>{ev.stopPropagation();showReplacementInline(cell,absence.id,date,true)};
+   }else if(tab==='overview'&&['owner','admin'].includes(profile?.role)){
     e.style.cursor='pointer';e.title='Retirer cette absence';
     e.onclick=ev=>{ev.stopPropagation();removeManualAbsence(absence)};
    }
    cell.appendChild(e);
+   if(tab==='replacement'){
+    for(const offer of (window.manualReplacementOffers||[]).filter(o=>o.absence_id===absence.id)){
+     const label=document.createElement('div');label.className='calendar-event';label.style.cssText='font-size:11px;background:#fff;color:#18312b;border-radius:5px;padding:3px';
+     label.textContent='↳ '+nm(offer.replacement_user_id)+' · '+String(offer.start_time).slice(0,5)+'–'+String(offer.end_time).slice(0,5)+' · '+(offer.status==='approved'?'Validé':offer.status==='rejected'?'Refusé':'Proposé');
+     cell.appendChild(label);
+    }
+   }
   }
   if(tab==='overview'&&['owner','admin'].includes(profile?.role))cell.onclick=()=>openManualAbsencePicker(date);
  }
