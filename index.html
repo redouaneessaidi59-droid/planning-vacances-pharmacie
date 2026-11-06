@@ -179,6 +179,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
   <h2>Gestion des comptes salariés</h2>
   <button id="createTeamBtn" type="button">Créer les comptes de l'équipe</button>
    <div id="teamCreationResult"></div>
+  <hr><h3>Réinitialiser le mot de passe d'un salarié</h3>
+  <p class="hint">Réservé au propriétaire. Le salarié devra utiliser le nouveau mot de passe à sa prochaine connexion.</p>
+  <div class="grid">
+    <div><label for="resetEmployee">Salarié</label><select id="resetEmployee"></select></div>
+    <div><label for="resetEmployeePassword">Nouveau mot de passe (10 caractères minimum)</label><input id="resetEmployeePassword" type="password" autocomplete="new-password"></div>
+    <div><label for="resetEmployeeConfirm">Confirmer le mot de passe</label><input id="resetEmployeeConfirm" type="password" autocomplete="new-password"></div>
+  </div>
+  <div class="actions"><button id="resetEmployeeBtn" type="button">Modifier le mot de passe</button></div>
+  <p id="resetEmployeeResult" role="status"></p>
 </section>
 </section>
 </main>
@@ -554,6 +563,28 @@ $('createTeamBtn').onclick = async () => {
   }
 };
 
+
+async function loadPasswordResetEmployees(){
+ if(profile?.role!=='owner')return;
+ const {data,error}=await sb.from('profiles').select('id,full_name,role').order('full_name');
+ if(error){$('resetEmployeeResult').textContent='Erreur de chargement : '+error.message;return}
+ $('resetEmployee').innerHTML=(data||[]).filter(p=>p.id!==user?.id&&p.role!=='owner').map(p=>'<option value="'+esc(p.id)+'">'+esc(p.full_name||p.id)+'</option>').join('');
+}
+$('resetEmployeeBtn').onclick=async()=>{
+ if(profile?.role!=='owner')return;
+ const id=$('resetEmployee').value,pass=$('resetEmployeePassword').value,confirmation=$('resetEmployeeConfirm').value;
+ const result=$('resetEmployeeResult');
+ if(!id||pass.length<10||pass.length>128||pass!==confirmation){result.textContent='Vérifie le salarié, le mot de passe (10 caractères minimum) et sa confirmation.';return}
+ if(!confirm('Confirmer la modification du mot de passe de '+$('resetEmployee').selectedOptions[0].textContent+' ?'))return;
+ const btn=$('resetEmployeeBtn');btn.disabled=true;result.textContent='Modification en cours…';
+ try{
+  const {data,error}=await sb.functions.invoke('manage-team-users',{body:{action:'reset_password',user_id:id,new_password:pass}});
+  if(error)throw error;
+  if(!data?.success)throw Error(data?.error||'Modification refusée');
+  $('resetEmployeePassword').value='';$('resetEmployeeConfirm').value='';
+  result.textContent='Mot de passe modifié pour '+data.employee+'.';
+ }catch(e){result.textContent='Erreur : '+e.message}finally{btn.disabled=false}
+};
 $('teamManagement').classList.add('hidden');
 $('changePasswordBtn').onclick = () => {
   $('passwordForm').classList.toggle('hidden');
