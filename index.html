@@ -401,6 +401,26 @@ tr:nth-child(even) td{background:#fafcfb}
 .replacement-choice-list{display:grid;gap:12px;padding:20px 24px 25px}
 .replacement-choice-list p{margin:0 0 5px;font-size:15px;color:#476350}
 .replacement-choice-list button{width:100%;text-align:left;font-size:16px;padding:15px 17px;min-height:54px}
+
+/* Fenêtres de gestion responsable et calendrier des remplacements épuré */
+.manager-assign-dialog{border:0;border-radius:19px;padding:0;width:min(94vw,700px);max-height:90vh;overflow-y:auto;box-shadow:0 25px 80px #102d215e;color:#193c2d;background:#fff}
+.manager-assign-dialog::backdrop{background:#10261cb3}
+.manager-assign-content{padding-bottom:20px}
+.manager-assign-heading{padding:22px 25px;background:#edf6ef;border-bottom:1px solid #d5e5da}
+.manager-assign-heading h2{font-size:23px;margin:0 0 6px;color:#17402e}
+.manager-assign-heading p{font-weight:700;font-size:16px;color:#40644c;margin:0}
+.manager-assign-fields{padding:6px 25px 0}
+.manager-assign-intro{font-size:15px;line-height:1.6;color:#365a43}
+.manager-assign-fields label{font-weight:750;font-size:16px;margin-top:16px}
+.manager-assign-fields input,.manager-assign-fields select{min-height:48px;width:100%;font-size:16px;border:1.5px solid #bdd5c3;border-radius:10px;padding:10px}
+.manager-assign-fields .hint{background:#f2f8f4;border-radius:9px;padding:12px;font-size:15px}
+.manager-assign-actions{display:flex;gap:12px;flex-wrap:wrap;padding:19px 25px 0}
+.manager-assign-actions button{font-size:15px;min-height:46px;padding:11px 17px}
+#calendarSection .simple-calendar-day .staffing-day-indicator{display:none!important}
+#calendarSection .simple-calendar-day .calendar-event{display:none!important}
+.simple-dialog-content .calendar-hidden-details .calendar-event{display:block!important}
+.simple-dialog-content .calendar-hidden-details .staffing-day-indicator{display:inline-flex!important}
+@media(max-width:650px){.manager-assign-dialog{width:96vw}.manager-assign-heading{padding:16px}.manager-assign-heading h2{font-size:20px}.manager-assign-fields{padding:7px 16px}.manager-assign-actions{padding:15px 16px 0}.manager-assign-actions button{flex:1 1 100%}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -1590,15 +1610,24 @@ function replacementFreeWindows(date,employeeId){
 }
 async function showManagerAssignInline(cell,targetId,date,isManual){
  if(new Date(date+'T12:00:00').getDay()===0){notice('La pharmacie est fermée le dimanche : aucune affectation possible.',true);return;}
- document.querySelectorAll('.replacement-inline').forEach(x=>x.remove());
- const box=document.createElement('div');box.className='replacement-inline';box.style.cssText='background:white;color:#18312b;padding:12px;border:2px solid #92400e;border-radius:9px;margin-top:6px;position:relative;z-index:5';
- const title=document.createElement('strong');title.textContent='Direction · Affecter un remplaçant le '+fmt(date);box.appendChild(title);
+ if(!isManagementUser())return;
+ document.querySelectorAll('dialog.simple-calendar-dialog[open]').forEach(x=>x.close());
+ document.querySelectorAll('dialog.manager-assign-dialog[open]').forEach(x=>x.close());
+ const dialog=document.createElement('dialog');dialog.className='manager-assign-dialog';
+ const box=document.createElement('div');box.className='manager-assign-content';
+ const heading=document.createElement('div');heading.className='manager-assign-heading';
+ const title=document.createElement('h2');title.textContent='👥 Désigner un remplaçant';
+ const dateText=document.createElement('p');dateText.textContent='Le '+new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+ heading.append(title,dateText);box.appendChild(heading);
+ const details=document.createElement('div');details.className='manager-assign-fields';box.appendChild(details);
+ const absentId=isManual?(window.manualAbsences||[]).find(a=>a.id===targetId)?.employee_id:(window.calendarLeaves||[]).find(a=>a.id===targetId)?.user_id;
+ const intro=document.createElement('p');intro.className='manager-assign-intro';intro.textContent='Salarié absent : '+nm(absentId)+'. Choisissez la personne disponible, les horaires et la compensation.';details.appendChild(intro);
  const people=(schedulePeople||[]).filter(p=>p.id!==(isManual?(window.manualAbsences||[]).find(a=>a.id===targetId)?.employee_id:(window.calendarLeaves||[]).find(a=>a.id===targetId)?.user_id));
- const label=(name,control)=>{const l=document.createElement('label');l.style.display='block';l.style.marginTop='9px';l.textContent=name;l.appendChild(control);box.appendChild(l);return control};
+ const label=(name,control)=>{const l=document.createElement('label');l.style.display='block';l.style.marginTop='9px';l.textContent=name;l.appendChild(control);details.appendChild(l);return control};
  const select=document.createElement('select');select.style.width='100%';
  for(const p of people){const o=document.createElement('option');o.value=p.id;o.textContent=p.full_name;select.appendChild(o)}
  label('Salarié désigné',select);
- const info=document.createElement('p');info.className='hint';box.appendChild(info);
+ const info=document.createElement('p');info.className='hint';details.appendChild(info);
  const start=document.createElement('input');start.type='time';start.style.width='100%';
  const end=document.createElement('input');end.type='time';end.style.width='100%';
  label('Début',start);label('Fin',end);
@@ -1608,9 +1637,9 @@ async function showManagerAssignInline(cell,targetId,date,isManual){
  const save=document.createElement('button');save.type='button';save.textContent='Confirmer l’affectation';save.style.marginTop='10px';
  save.onclick=async e=>{e.stopPropagation();const free=replacementFreeWindows(date,select.value);if(!free?.some(x=>start.value>=x.start&&end.value<=x.end)){notice('Choisis un créneau libre du salarié.',true);return}const parisNow=new Date().toLocaleString('sv-SE',{timeZone:'Europe/Paris'}).replace(' ','T');const advance=(new Date(date+'T'+start.value)-new Date(parisNow))/86400000;const noticeRule=advance>=7?'Prévenance d’au moins 7 jours : affectation confirmée automatiquement, avec possibilité de refus.':'Prévenance inférieure à 7 jours : le salarié devra accepter ou refuser.';if(!confirm('Affecter '+select.selectedOptions[0].textContent+' le '+fmt(date)+' de '+start.value+' à '+end.value+' ?\n'+noticeRule))return;save.disabled=true;
  const {error}=await sb.rpc('assign_manager_replacement',{p_type:isManual?'manual':'leave',p_target:targetId,p_user:select.value,p_date:date,p_start:start.value,p_end:end.value,p_mode:mode.value});
- if(error){notice(error.message,true);save.disabled=false;return}await refresh();notice('Affectation enregistrée. '+noticeRule+' Notification visible dans son espace personnel. L’envoi par e-mail reste à configurer.')};
- box.appendChild(save);
- const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuler';cancel.style.marginLeft='8px';cancel.onclick=e=>{e.stopPropagation();box.remove()};box.appendChild(cancel);cell.appendChild(box);
+ if(error){notice(error.message,true);save.disabled=false;return}dialog.close();await refresh();notice('Affectation enregistrée. '+noticeRule+' Notification visible dans son espace personnel. L’envoi par e-mail reste à configurer.')};
+ const actions=document.createElement('div');actions.className='manager-assign-actions';actions.appendChild(save);
+ const cancel=document.createElement('button');cancel.type='button';cancel.className='secondary';cancel.textContent='Annuler';cancel.style.marginLeft='8px';cancel.onclick=e=>{e.stopPropagation();dialog.close()};actions.appendChild(cancel);box.appendChild(actions);dialog.appendChild(box);document.body.appendChild(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
 }
 function showReplacementInline(cell,leaveId,date,isManual=false){
  if(new Date(date+'T12:00:00').getDay()===0){notice('La pharmacie est fermée le dimanche : aucun remplacement possible.',true);return;}
@@ -1697,7 +1726,7 @@ function openReplacementChoices(cell,date){
 }
 
 function formatMainCalendarSummary(cell,date,sunday,holiday){
- if(tab!=='overview')return;
+ if(!['overview','replacement'].includes(tab))return;
  const originalClick=cell.onclick;
  const number=cell.querySelector(':scope > strong');
  const details=document.createElement('div');
@@ -1729,6 +1758,18 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
    badge.textContent=info.text;
    cell.insertBefore(badge,details);
  }
+ if(tab==='replacement'&&!sunday&&!holiday){
+   const level=replacementStaffingLevel(date);
+   if(level?.minimum===0)events.unshift({text:'🔴 Remplacement prioritaire',kind:'absence'});
+   else if(level?.minimum===1)events.unshift({text:'🟠 Effectif réduit',kind:'neutral'});
+   const canOffer=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id)
+      ||(window.calendarLeaves||[]).some(l=>l.status==='approved'&&l.user_id!==user?.id&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
+   if(canOffer)events.unshift({text:'🤝 Remplacement possible',kind:'replacement'});
+   for(const info of events.slice(0,2)){
+     const el=document.createElement('span');el.className='simple-day-pill simple-day-'+info.kind;el.textContent=info.text;
+     cell.insertBefore(el,details);
+   }
+ }
  const hasDetails=details.children.length>0||!!originalClick||events.length>0;
  if(!hasDetails)return;
  cell.classList.add('calendar-clickable');
@@ -1749,6 +1790,15 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
   description.textContent=names.length?('Personne(s) absente(s) : '+names.join(', ')):sunday?'Pharmacie fermée le dimanche.':holiday?'Jour férié : '+holiday:'Informations de la journée.';
   content.appendChild(description);
   details.hidden=false;content.appendChild(details);
+  if(tab==='replacement'&&!sunday&&!holiday){
+    const manual=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id);
+    const leave=(window.calendarLeaves||[]).some(l=>l.status==='approved'&&l.user_id!==user?.id&&!l.replacements?.length&&date>=l.start_date&&date<=l.end_date);
+    if(manual||leave){
+      const propose=document.createElement('button');propose.type='button';propose.textContent='🤝 Proposer un remplacement';propose.className='simple-dialog-add';
+      propose.onclick=()=>{dialog.close();openReplacementChoices(cell,date)};
+      content.appendChild(propose);
+    }
+  }
   if(isManagementUser()&&!sunday){
     const add=document.createElement('button');add.type='button';add.textContent='＋ Signaler une absence';add.className='secondary simple-dialog-add';
     add.onclick=()=>{dialog.close();openManualAbsencePicker(date)};
@@ -1960,15 +2010,6 @@ for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===
  cell.appendChild(label);
 }
 formatMainCalendarSummary(cell,date,sunday,holiday);
-if(tab==='replacement'&&!sunday&&!holiday){
- const eligibleManual=(window.manualAbsences||[]).some(a=>a.absence_date===date&&a.employee_id!==user?.id);
- const eligibleLeave=(window.calendarLeaves||[]).some(l=>l.user_id!==user?.id&&l.status==='approved'&&date>=l.start_date&&date<=l.end_date&&!l.replacements?.length);
- if(eligibleManual||eligibleLeave){
-   cell.classList.add('calendar-clickable');
-   cell.title='Cliquer pour proposer un remplacement le '+fmt(date);
-   cell.onclick=e=>{if(e.target.closest('button,a,select,input,textarea'))return;openReplacementChoices(cell,date)};
- }
-}
 grid.appendChild(cell);
   }
 }
