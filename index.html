@@ -1848,6 +1848,14 @@ function formatSaturdayCalendarDay(cell,date){
  for(const child of [...cell.children])if(child!==number)detail.appendChild(child);
  cell.appendChild(detail);
  cell.classList.add('simple-calendar-day','calendar-clickable','saturday-summary-day');
+ const holiday=holidayName(date);
+ if(holiday){
+   const tag=document.createElement('span');
+   tag.className='simple-day-pill simple-day-closed';
+   tag.textContent='Jour férié : '+holiday;
+   cell.insertBefore(tag,detail);
+ }
+
  const shifts=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);
  const requests=(typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.saturday_date===date&&['open','pending_manager','approved'].includes(x.status));
  const summary=(text,name)=>{
