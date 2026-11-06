@@ -186,6 +186,154 @@ input,select,textarea{font-size:16px}
 .team-cancel-button:hover{background:#88252d}
 .team-requests-empty{grid-column:1/-1;background:#f1f7f2;color:#395846;border-radius:10px;padding:18px;font-size:15px}
 @media(max-width:650px){.team-requests-section{padding:17px}#requestsList{grid-template-columns:1fr}.team-leave-status{font-size:12px}.team-leave-name{font-size:19px}.team-leave-period strong{font-size:16px}}
+
+/* Refonte visuelle générale — version commune à tous les onglets */
+:root{
+  --bg:#f3f7f4;
+  --card:#ffffff;
+  --ink:#18372c;
+  --muted:#52695d;
+  --line:#d3e1d7;
+  --green:#174b40;
+  --green2:#26715b;
+}
+html{scroll-behavior:smooth}
+body{background:linear-gradient(180deg,#edf5ef 0,#f4f7f5 370px);color:var(--ink);font-size:16px;line-height:1.55}
+main{max-width:1200px}
+header{box-shadow:0 8px 26px #0f47301a}
+header h1{font-size:clamp(24px,3vw,30px);font-weight:800;letter-spacing:-.025em}
+header p{font-size:15px;line-height:1.5}
+.card{background:#fff;border:1px solid #d8e4da;border-radius:20px;padding:24px;box-shadow:0 5px 20px #1a51350b;min-width:0}
+.card:not(.hidden){animation:pv-appear .2s ease-out}
+@keyframes pv-appear{from{opacity:.65;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.card h2{font-size:clamp(21px,2vw,25px);font-weight:800;color:#163b2d;line-height:1.35;margin-bottom:13px}
+.card h3{font-size:19px;font-weight:750;color:#204634;line-height:1.4}
+.card h4{font-size:16px;color:#244739}
+.card .hint,.card .muted{font-size:14px;line-height:1.6;color:#52675b}
+.section-lead{color:#496254;font-size:15px;line-height:1.65;margin:0 0 22px;max-width:850px}
+.card .item:not(.team-leave-card):not(.admin-request-card):not(.absent-balance-card){
+  border:1px solid #d7e4da;border-radius:13px;background:#fcfefc;padding:17px 18px;
+}
+.card .item>strong{font-size:16px}
+.card .item>p{line-height:1.65}
+.card .grid{gap:15px;min-width:0}
+label{display:block;margin:13px 0 6px;color:#28483a;font-size:15px;font-weight:700;line-height:1.45}
+input:not([type="checkbox"]):not([type="radio"]),select,textarea{
+  background:#fff;border:1.5px solid #b7cabe;border-radius:10px;color:#183b2c;
+  padding:12px 14px;font-size:16px;line-height:1.45;min-height:45px;max-width:100%;
+}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{
+  outline:3px solid #67ae8e;outline-offset:2px;
+}
+input::placeholder,textarea::placeholder{color:#677f70;opacity:1}
+textarea{resize:vertical;min-height:92px}
+button{min-height:44px;padding:11px 16px;border-radius:10px;font-size:15px;font-weight:750;line-height:1.4}
+button.secondary{background:#e3efe7;color:#174b36;border:1px solid #c5dacc}
+button.danger{background:#a8323b;color:white}
+button:disabled{opacity:.55}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:15px}
+.nav-groups{gap:12px;margin:19px 0 23px}
+.nav-group{border:1px solid #d8e4da;border-radius:18px;padding:17px 19px;box-shadow:0 4px 16px #153c2510}
+.nav-title{color:#214d39;font-size:15px;font-weight:800;letter-spacing:0;margin-bottom:12px}
+.nav-group .tabs{gap:9px}
+.nav-group .tabs button{
+  border:1px solid #d6e3da;background:#f0f5f1;color:#244b39;
+  font-size:15px;font-weight:750;min-height:45px;padding:11px 16px;
+  border-radius:12px;box-shadow:none;
+}
+.nav-group .tabs button.active{background:#174b40;border-color:#174b40;color:#fff;box-shadow:0 4px 14px #174b4023}
+.nav-group .tabs button:hover:not(.active){background:#e2eee7}
+.nav-count{background:white;color:#205440;font-size:13px;padding:3px 8px;vertical-align:middle}
+table{font-size:14px;max-width:100%}
+th{background:#eef4f0;color:#294c3b;font-size:13px;font-weight:750}
+th,td{padding:12px;border-bottom:1px solid #dbe6de;line-height:1.5}
+tr:nth-child(even) td{background:#fafcfb}
+#calendarSection{padding:23px 23px 28px}
+#calendarSection .calendar-toolbar{gap:13px;justify-content:space-between;align-items:center;background:#f2f7f3;border:1px solid #d8e5dc;border-radius:13px;padding:11px 13px}
+#calendarSection #calendarTitle{text-align:center;margin:0;font-size:clamp(18px,2vw,24px)}
+#calendarPrev,#calendarNext,#recPrev,#recNext{
+  min-width:45px;min-height:45px;border-radius:11px;background:#174b40;color:white;
+  font-size:17px;padding:7px 12px;flex-shrink:0;
+}
+.calendar-help{font-size:14px;color:#4c6454;line-height:1.55;margin:14px 2px 12px}
+#staffingLegend{border:1px solid #d7e4db;background:#f7faf7;padding:13px 15px;border-radius:11px;font-size:13px;gap:10px 17px}
+#staffingLegend span{font-size:13px;font-weight:650;color:#264b39}
+#calendarGrid{gap:8px;margin-top:15px}
+#calendarGrid .calendar-header{
+  background:#e5f0e8;border:1px solid #cedfd3;border-radius:10px;
+  padding:10px 4px;color:#244b38;font-size:13px;font-weight:800;
+}
+#calendarGrid .calendar-day{
+  border:1.5px solid #d2ded4;border-radius:12px;
+  min-height:125px;padding:9px;box-shadow:0 2px 7px #1b4d2810;
+  overflow-wrap:anywhere;transition:box-shadow .15s,border-color .15s;
+}
+#calendarGrid .calendar-day:hover{border-color:#8abda1;box-shadow:0 3px 12px #27683e1a}
+#calendarGrid .calendar-clickable{cursor:pointer}
+#calendarGrid .calendar-event{
+  display:block;line-height:1.35;font-size:11px;font-weight:650;
+  padding:5px 6px;margin-top:5px;border-radius:7px;
+  overflow-wrap:anywhere;white-space:normal;max-width:100%;
+}
+#calendarGrid .calendar-pending{border:1px solid #ead6a1;color:#6b4508}
+#calendarGrid .calendar-approved{border:1px solid #a7d7b8;color:#145237}
+#calendarGrid .calendar-urgent{border:1px solid #e9baba;color:#742f30}
+#calendarGrid .calendar-recovery{border:1px solid #bdd6e9;color:#24476a}
+.calendar-holiday,.calendar-school,.calendar-saturday-hours{line-height:1.4}
+.staffing-day-indicator{font-size:11px;line-height:1.3;padding:5px 7px}
+#calendarSection .replacement-ranking{background:#f7faf8;border:1px solid #d2e2d7;border-radius:12px;padding:16px}
+#calendarSection .replacement-ranking h3{font-size:17px}
+#calendarSection .replacement-rank-row{font-size:14px}
+#rangePicker{border:1px solid #d0e1d5!important;background:#f3f8f4!important;padding:17px!important}
+#rangeSummary{font-size:15px;color:#2b5540;margin:12px 0}
+#recCalendar{gap:7px}
+#recCalendar button{border-radius:10px;font-size:13px;font-weight:750;min-height:65px}
+#recCalendar .heading{font-size:13px;color:#385845;font-weight:750}
+#messageThread,#availList,#recList,#recAdmin,#satRequests,#myBalances,#paidHoursContent{min-width:0;overflow-wrap:anywhere}
+#messageThread .item,#availList .item,#recList .item,#satRequests .item,#myBalances .item,#paidHoursContent .item{padding:16px;margin:12px 0;border-left:3px solid #8bb8a0}
+#messageBody{min-height:115px}
+#messageSend,#sendLeave,#recSend,#satSend,#availSave{margin-top:12px}
+#teamManagement{margin-top:20px}
+#teamManagement>h2{font-size:22px}
+#leaveGuide .item strong{font-size:17px}
+#leaveGuide .item{border-left:4px solid #619879!important}
+#allBalances>.item{background:#fff}
+@media(min-width:900px){
+ #calendarGrid .calendar-day{min-height:150px;padding:11px}
+ #calendarGrid .calendar-event{font-size:12px;padding:6px 7px}
+}
+@media(max-width:850px){
+ .card{padding:18px}
+ #calendarSection{padding:17px}
+ #calendarSection .calendar-toolbar{padding:10px}
+ .nav-group{padding:14px}
+}
+@media(max-width:650px){
+ main{padding:0 10px 36px}
+ .card{padding:16px;border-radius:15px}
+ .card h2{font-size:21px}
+ .card h3{font-size:18px}
+ .nav-group .tabs button{font-size:14px;flex:1 1 auto}
+ #calendarSection{padding:12px}
+ #calendarGrid{
+   grid-template-columns:repeat(7,minmax(90px,1fr));
+   width:100%;overflow-x:auto;overscroll-behavior-x:contain;
+   padding:3px 2px 12px;gap:5px;
+ }
+ #calendarGrid .calendar-header{font-size:12px;padding:8px 2px}
+ #calendarGrid .calendar-day{min-height:110px;padding:6px}
+ #calendarGrid .calendar-event{font-size:10px;padding:4px}
+ #calendarSection #calendarTitle{font-size:17px}
+ #calendarPrev,#calendarNext{min-width:40px;min-height:40px}
+ #staffingLegend{font-size:12px;padding:10px}
+ .month-grid button{min-height:58px}
+ #recCalendar{gap:4px}
+ #recCalendar button{font-size:11px;padding:5px 2px;min-height:57px}
+ table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+ th,td{white-space:normal;min-width:80px}
+ .actions>button{max-width:100%}
+}
+@media(prefers-reduced-motion:reduce){.card:not(.hidden){animation:none}#calendarGrid .calendar-day{transition:none}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -228,11 +376,12 @@ input,select,textarea{font-size:16px}
 <div class="nav-group"><div class="nav-title">⚙️ Mon espace et gestion</div><div class="tabs"><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="messages">Messagerie</button><button data-tab="leaveGuide">Comprendre les congés</button><button data-tab="recovery" id="recoveryManagerTab" class="hidden">Calendrier récupérations</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button><button data-tab="paidHours" id="paidHoursTab" class="hidden">Heures sup à payer</button></div></div>
 </nav>
 <section id="calendarSection" class="card">
-  <div class="row">
+  <div class="row calendar-toolbar">
     <button type="button" id="calendarPrev">❮</button>
     <h2 id="calendarTitle">Calendrier des congés</h2>
     <button type="button" id="calendarNext">❯</button>
   </div>
+  <p class="calendar-help">Consultez les absences et les remplacements en un coup d’œil. Sélectionnez une date pour accéder aux actions disponibles.</p>
   <div id="holidayReminder" class="holiday-reminder" aria-live="polite"></div>
 <div id="staffingLegend" class="staffing-legend" aria-label="Légende des effectifs">
  <span><i class="staffing-dot green"></i> Vert : couverture suffisante</span>
@@ -242,20 +391,20 @@ input,select,textarea{font-size:16px}
 <div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div id="calendarGrid"></div><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div>
 </section>
 <section id="overview" class="card team-requests-section"><p class="hint team-manager-hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>📋 Demandes de congés de l'équipe</h2><p class="team-requests-intro">Retrouvez ici les congés demandés par vos collègues et leur état d'avancement. Les détails privés restent réservés aux responsables.</p><div id="requestsList" aria-live="polite">Chargement…</div></section>
-<section id="request" class="card hidden"><h2>Nouvelle demande de congés</h2>
+<section id="request" class="card hidden"><h2>📝 Demander des congés</h2><p class="section-lead">Choisissez les dates souhaitées, ajoutez un commentaire si nécessaire, puis envoyez la demande à vos responsables.</p>
 <div class="grid"><div><label>Premier jour d'absence</label><input type="date" id="leaveStart"></div><div><label>Dernier jour d'absence</label><input type="date" id="leaveEnd"></div></div>
 <div id="rangePicker" class="card" style="background:#f7faf8"><strong>Périodes sélectionnées</strong><p class="hint">Clique une fois sur le début, puis sur la fin. Pour une journée seule, sélectionne-la deux fois avec le bouton « Ajouter cette journée ». Recommence pour ajouter une autre période.</p><div id="rangeSummary">Aucune période sélectionnée.</div><button type="button" id="addSingleDay" class="secondary" style="display:none">Terminer cette journée</button><button type="button" id="clearRanges" class="secondary">Effacer la sélection</button></div><p class="hint">Préavis interne : 7 jours pour une absence de 5 jours maximum, 15 jours au-delà. Ces délais ne remplacent pas les dispositions légales ou conventionnelles. La direction vise une réponse sous 7 jours.</p><label>Type de demande</label><select id="absenceKind"><option value="leave">Congés payés</option><option value="recovery">Récupération (1 jour pris = 1 jour déduit)</option></select><div id="recoveryInline" class="hidden"><p class="hint">Les récupérations sont comptées uniquement sur les jours réellement pris, indépendamment des congés payés.</p><label>Date de récupération</label><input id="inlineRecDate" type="date"><label>Commentaire récupération</label><input id="inlineRecNote"><button type="button" id="inlineRecSend">Demander une récupération</button><div id="inlineRecList"></div></div><label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button><button type="button" id="retryLeaveEmail">Tester l’e-mail de ma dernière demande</button></div><div id="emailTestResult" class="hint" aria-live="polite"></div>
 </section>
 <section id="replacement" class="card hidden">
-<h2>Se proposer pour remplacer</h2><p class="hint">Repère les journées à couvrir dans le calendrier, puis clique sur le nom du collègue absent pour choisir tes heures et ta compensation.</p><div class="item"><strong>Lecture du calendrier</strong><p class="hint">🟢 À couvrir : au moins 2 collègues présents · 🟡 À renforcer : 1 seul collègue présent sur une partie de la journée, notamment le midi · 🔴 Prioritaire : aucun collègue présent sur au moins un créneau, midi compris. Le niveau correspond au moment où l’effectif est le plus faible, selon les plannings et absences connus.</p></div><div id="replacementNeeds" class="item">Chargement des besoins…</div><label>Demande à remplacer</label><select id="replaceLeave"></select>
+<h2>🤝 Proposer un remplacement</h2><p class="hint">Repère les journées à couvrir dans le calendrier, puis clique sur le nom du collègue absent pour choisir tes heures et ta compensation.</p><div class="item"><strong>Lecture du calendrier</strong><p class="hint">🟢 À couvrir : au moins 2 collègues présents · 🟡 À renforcer : 1 seul collègue présent sur une partie de la journée, notamment le midi · 🔴 Prioritaire : aucun collègue présent sur au moins un créneau, midi compris. Le niveau correspond au moment où l’effectif est le plus faible, selon les plannings et absences connus.</p></div><div id="replacementNeeds" class="item">Chargement des besoins…</div><label>Demande à remplacer</label><select id="replaceLeave"></select>
 <div class="grid"><div><label>Jour du remplacement</label><input id="replacementWorkDate" type="date"></div><div><label>Début du remplacement</label><input id="replacementWorkStart" type="time" value="09:00"></div><div><label>Fin du remplacement</label><input id="replacementWorkEnd" type="time" value="19:00"></div></div><label>Mode de compensation (visible uniquement par la direction)</label><select id="compMode"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select>
 <p class="hint">Les heures choisies en récupération sont cumulées après validation du remplacement, sans date de récupération à fixer maintenant.</p>
 <small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
 <div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
-<section id="schedules" class="card hidden"><h2>Horaires habituels</h2><p class="muted">Semaine type de chaque salarié. Les horaires du samedi alterné se gèrent séparément. Les horaires passés sont conservés.</p><div id="scheduleList" class="hidden" aria-hidden="true"></div><div id="scheduleEditor" class="hidden"><h3>Modifier les horaires</h3><div class="grid"><div><label>Salarié</label><select id="scheduleEmployee"></select></div><div><label>À partir du</label><input id="scheduleEffective" type="date"></div></div><p class="hint">Un créneau par ligne, au format Jour;HH:MM;HH:MM. Jours : 1=lundi, 2=mardi, …, 7=dimanche. Une journée sans créneau est un repos. Les interruptions ne sont pas comptées ; pour une pause rémunérée, saisissez une plage continue.</p><label>Créneaux</label><textarea id="scheduleSlots" rows="9" placeholder="1;09:00;12:30&#10;1;14:00;19:00"></textarea><div class="actions"><button id="scheduleSave">Enregistrer une nouvelle version</button></div></div></section><section id="availability" class="card hidden"><h2>Disponibilités pour remplacer</h2><div class="grid"><div><label>Date</label><input type="date" id="availDate"></div><div><label>Début</label><input type="time" id="availStart" value="09:00"></div><div><label>Fin</label><input type="time" id="availEnd" value="19:00"></div></div><label>Précisions</label><input id="availNote"><button id="availSave">Ajouter ma disponibilité</button><div id="availList"></div></section>
-<section id="recovery" class="card hidden"><h2>Calendrier des récupérations</h2><p class="hint">Vert : récupération envisageable (au moins deux collègues prévus toute la journée). Gris : jour non travaillé. Orange : effectif insuffisant, demande exceptionnelle possible. Clique sur une date pour la choisir ; Ibrahim doit ensuite valider.</p><div class="grid"><div><label for="recEmployee">Calendrier du salarié</label><select id="recEmployee"></select></div></div><div class="row"><button id="recPrev">❮</button><h3 id="recTitle"></h3><button id="recNext">❯</button></div><div id="recCalendar" class="month-grid"></div><label>Date sélectionnée</label><input id="recDate" type="date"><label>Durée de récupération</label><select id="recKind"><option value="day">Journée complète (1 jour)</option><option value="morning">Matinée (0,5 jour)</option><option value="afternoon">Après-midi (0,5 jour)</option><option value="hours">Quelques heures précises</option></select><div id="recHours" class="grid hidden"><div><label>Début</label><input id="recStart" type="time" value="09:00"></div><div><label>Fin</label><input id="recEnd" type="time" value="10:00"></div></div><label>Commentaire</label><input id="recNote"><button id="recSend">Demander une récupération</button><div id="recList"></div><div id="recAdmin"></div></section>
-<section id="saturdays" class="card hidden"><h2>Gestion des samedis</h2><p class="hint">Clique sur ta case du samedi dans le calendrier ci-dessus pour demander un remplaçant. Les collègues peuvent se proposer directement sur la case encadrée en rouge.</p><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
-<section id="messages" class="card hidden"><h2>Messagerie privée avec Ibrahim</h2><div id="messageThread"></div><div id="messageRecipientWrap" class="hidden"><label>Répondre à</label><select id="messageRecipient"></select></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
+<section id="schedules" class="card hidden"><h2>🕒 Horaires habituels</h2><p class="muted">Semaine type de chaque salarié. Les horaires du samedi alterné se gèrent séparément. Les horaires passés sont conservés.</p><div id="scheduleList" class="hidden" aria-hidden="true"></div><div id="scheduleEditor" class="hidden"><h3>Modifier les horaires</h3><div class="grid"><div><label>Salarié</label><select id="scheduleEmployee"></select></div><div><label>À partir du</label><input id="scheduleEffective" type="date"></div></div><p class="hint">Un créneau par ligne, au format Jour;HH:MM;HH:MM. Jours : 1=lundi, 2=mardi, …, 7=dimanche. Une journée sans créneau est un repos. Les interruptions ne sont pas comptées ; pour une pause rémunérée, saisissez une plage continue.</p><label>Créneaux</label><textarea id="scheduleSlots" rows="9" placeholder="1;09:00;12:30&#10;1;14:00;19:00"></textarea><div class="actions"><button id="scheduleSave">Enregistrer une nouvelle version</button></div></div></section><section id="availability" class="card hidden"><h2>🙋 Mes disponibilités pour remplacer</h2><p class="section-lead">Indiquez un jour et les heures pendant lesquelles vous pouvez remplacer un collègue.</p><div class="grid"><div><label>Date</label><input type="date" id="availDate"></div><div><label>Début</label><input type="time" id="availStart" value="09:00"></div><div><label>Fin</label><input type="time" id="availEnd" value="19:00"></div></div><label>Précisions</label><input id="availNote"><button id="availSave">Ajouter ma disponibilité</button><div id="availList"></div></section>
+<section id="recovery" class="card hidden"><h2>🗓️ Calendrier des récupérations</h2><p class="hint">Vert : récupération envisageable (au moins deux collègues prévus toute la journée). Gris : jour non travaillé. Orange : effectif insuffisant, demande exceptionnelle possible. Clique sur une date pour la choisir ; Ibrahim doit ensuite valider.</p><div class="grid"><div><label for="recEmployee">Calendrier du salarié</label><select id="recEmployee"></select></div></div><div class="row"><button id="recPrev">❮</button><h3 id="recTitle"></h3><button id="recNext">❯</button></div><div id="recCalendar" class="month-grid"></div><label>Date sélectionnée</label><input id="recDate" type="date"><label>Durée de récupération</label><select id="recKind"><option value="day">Journée complète (1 jour)</option><option value="morning">Matinée (0,5 jour)</option><option value="afternoon">Après-midi (0,5 jour)</option><option value="hours">Quelques heures précises</option></select><div id="recHours" class="grid hidden"><div><label>Début</label><input id="recStart" type="time" value="09:00"></div><div><label>Fin</label><input id="recEnd" type="time" value="10:00"></div></div><label>Commentaire</label><input id="recNote"><button id="recSend">Demander une récupération</button><div id="recList"></div><div id="recAdmin"></div></section>
+<section id="saturdays" class="card hidden"><h2>📅 Gestion des samedis</h2><p class="hint">Clique sur ta case du samedi dans le calendrier ci-dessus pour demander un remplaçant. Les collègues peuvent se proposer directement sur la case encadrée en rouge.</p><h3>Échanger ou faire remplacer mon samedi</h3><div class="grid"><div><label>Mon samedi</label><select id="satDate"></select></div><div><label>Collègue</label><select id="satRecipient"></select></div><div><label>Demande</label><select id="satMode"><option value="cover">Remplacement sans échange</option><option value="exchange">Échange de samedis</option></select></div><div id="satExchangeWrap" class="hidden"><label>Son samedi</label><select id="satExchange"></select></div><div><label>Compensation confidentielle</label><select id="satComp"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select></div></div><button id="satSend">Demander</button><h3>Échanges proposés à un collègue</h3><div id="satRequests"></div></section>
+<section id="messages" class="card hidden"><h2>💬 Messagerie privée avec Ibrahim</h2><p class="section-lead">Échangez directement avec votre responsable. Les messages restent privés.</p><div id="messageThread"></div><div id="messageRecipientWrap" class="hidden"><label>Répondre à</label><select id="messageRecipient"></select></div><label>Message</label><textarea id="messageBody" rows="3" maxlength="2000"></textarea><button id="messageSend">Envoyer à Ibrahim</button></section>
 <section id="leaveGuide" class="card hidden">
 <h2>📘 Comprendre le calcul des congés</h2>
 <p class="hint">Dans notre pharmacie, les congés sont comptés en <strong>jours ouvrables</strong> (du lundi au samedi).</p>
@@ -264,8 +413,8 @@ input,select,textarea{font-size:16px}
 <div class="item"><strong>Exemples simples</strong><p>Une semaine complète sans jour férié = <strong>6 jours</strong>.<br>Une semaine avec un jour férié chômé du lundi au samedi = <strong>5 jours</strong>.</p></div>
 <p class="hint">Les congés s'acquièrent à raison de 2,5 jours ouvrables par mois, soit 30 jours pour une année complète. Le calcul peut dépendre de la date réelle de reprise.</p>
 </section>
-<section id="balances" class="card hidden"><h2>Mes compteurs</h2><div id="myBalances">Chargement…</div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
-<section id="paidHours" class="card hidden"><h2>Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>Gestion de la pharmacie</h2><h3>📥 Demandes de congés à traiter</h3><p class="admin-intro">Consultez chaque demande, puis choisissez une décision. Les demandes en attente apparaissent ici.</p><div id="adminRequests"></div><h3 style="margin-top:32px">📊 Soldes de congés des salariés</h3><p class="admin-intro">Modifiez les jours disponibles, puis enregistrez les compteurs de chaque salarié.</p><div id="allBalances"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
+<section id="balances" class="card hidden"><h2>📊 Mes compteurs</h2><p class="section-lead">Consultez vos jours de congés et vos récupérations disponibles.</p><div id="myBalances">Chargement…</div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
+<section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>⚙️ Gestion de la pharmacie</h2><h3>📥 Demandes de congés à traiter</h3><p class="admin-intro">Consultez chaque demande, puis choisissez une décision. Les demandes en attente apparaissent ici.</p><div id="adminRequests"></div><h3 style="margin-top:32px">📊 Soldes de congés des salariés</h3><p class="admin-intro">Modifiez les jours disponibles, puis enregistrez les compteurs de chaque salarié.</p><div id="allBalances"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
   <button id="createTeamBtn" type="button">Créer les comptes de l'équipe</button>
