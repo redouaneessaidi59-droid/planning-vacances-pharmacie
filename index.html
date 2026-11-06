@@ -324,9 +324,9 @@ async function renderAdmin() {
     .from('balances')
     .select('*,profiles!balances_user_id_fkey(full_name)');
 
-  if (profile.role !== 'owner') {
+  if (profile.role !== 'owner' && profile.role !== 'admin') {
     $('allBalances').innerHTML =
-      '<p class="muted">Modification des compteurs réservée à Redouane.</p>';
+      '<p class="muted">Modification des compteurs réservée aux responsables.</p>';
   } else {
     $('allBalances').innerHTML = (bs || []).map(b => `
       <div class="item">
