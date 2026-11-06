@@ -897,37 +897,27 @@ function remainingStaff(date){
  }).length;
 }
 function staffingByMoment(date,clock){
- if(!schedulePeople.length||!scheduleVersions.length)return null;
- const weekday=new Date(date+'T12:00:00').getDay();
- if(weekday===0)return 0;
- const minute=timeMin(clock),leaves=window.calendarLeaves||[],recoveries=window.approvedAbsences||[],manual=window.manualAbsences||[];
- return schedulePeople.filter(person=>{
-  if(person.id===user?.id)return false;
-  const version=scheduleCurrent(person.id,date);if(!version)return false;
-  const onShift=scheduleSlots.some(slot=>slot.version_id===version.id&&Number(slot.weekday)===weekday&&timeMin(slot.start_time)<=minute&&timeMin(slot.end_time)>minute);
-  return onShift&&!manual.some(a=>a.employee_id===person.id&&a.absence_date===date)&&!leaves.some(leave=>leave.user_id===person.id&&leave.status==='approved'&&date>=leave.start_date&&date<=leave.end_date)&&!recoveries.some(r=>r.user_id===person.id&&r.date===date&&(!r.start||!r.end||(timeMin(r.start)<=minute&&minute<timeMin(r.end))));
- }).length;
+ if(!schedulePeople.length||!scheduleVersions.length||!scheduleSlots.length)return null;
+ const minute=timeMin(clock);
+ const leaves=window.calendarLeaves||[],recoveries=window.approvedAbsences||[],manual=window.manualAbsences||[];
+ const names=new Set(scheduleBars(date).filter(slot=>timeMin(slot.start)<=minute&&minute<timeMin(slot.end)).map(slot=>slot.name));
+ for(const leave of leaves)if(leave.status!=='rejected'&&leave.start_date<=date&&date<=leave.end_date)names.delete(leave.profiles?.full_name||nm(leave.user_id));
+ for(const absence of manual)if(absence.absence_date===date)names.delete(nm(absence.employee_id));
+ for(const recovery of recoveries)if(recovery.date===date&&(!recovery.start||!recovery.end||(timeMin(recovery.start)<=minute&&minute<timeMin(recovery.end))))names.delete(nm(recovery.user_id));
+ return names.size;
 }
 function replacementStaffingLevel(date){
  if(!schedulePeople.length||!scheduleVersions.length||!scheduleSlots.length)return null;
  const weekday=new Date(date+'T12:00:00').getDay();if(weekday===0)return null;
  const weeks=Math.round((new Date(date+'T12:00:00')-new Date(2026,10,7,12))/604800000);
  const opening=weekday===6?[[540,750],...(weeks%2===0?[[840,1140]]:[])]:[[540,1170]];
- const absences=(window.calendarLeaves||[]).filter(l=>l.status!=='rejected'&&date>=l.start_date&&date<=l.end_date);
- const recovery=window.approvedAbsences||[];
- const manual=(window.manualAbsences||[]).filter(a=>a.absence_date===date);
- const slots=scheduleBars(date);
  const samples=[];
- for(const [start,end] of opening)for(let minute=start;minute<end;minute+=15){
-  const names=new Set(slots.filter(x=>timeMin(x.start)<=minute&&timeMin(x.end)>minute).map(x=>x.name));
-  for(const l of absences)names.delete(l.profiles?.full_name||nm(l.user_id));
-  for(const a of manual)names.delete(nm(a.employee_id));
-  for(const r of recovery)if(r.date===date&&(!r.start||!r.end||(timeMin(r.start)<=minute&&minute<timeMin(r.end))))names.delete(nm(r.user_id));
-  samples.push({minute,count:names.size});
- }
+ for(const [start,end] of opening)for(let minute=start;minute<end;minute+=15) samples.push({minute,count:staffingByMoment(date,String(Math.floor(minute/60)).padStart(2,'0')+':'+String(minute%60).padStart(2,'0'))});
  if(!samples.length)return null;
  const minimum=Math.min(...samples.map(x=>x.count));
- const periods=[];for(const sample of samples){if(sample.count!==minimum)continue;const last=periods[periods.length-1];if(last&&last.end===sample.minute){last.end=sample.minute+15}else{periods.push({start:sample.minute,end:sample.minute+15})}}return {minimum,periods:periods.map(p=>staffingClock(p.start)+'–'+staffingClock(p.end))};
+ const periods=[];
+ for(const sample of samples){if(sample.count!==minimum)continue;const last=periods[periods.length-1];if(last&&last.end===sample.minute)last.end=sample.minute+15;else periods.push({start:sample.minute,end:sample.minute+15})}
+ return {minimum,periods:periods.map(p=>staffingClock(p.start)+'–'+staffingClock(p.end))};
 }
 function staffingCriticalPeriods(date){
  if(!schedulePeople.length||!scheduleVersions.length||!Array.isArray(window.approvedAbsences))return [];
