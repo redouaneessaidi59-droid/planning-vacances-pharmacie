@@ -1829,7 +1829,7 @@ function formatSaturdayCalendarDay(cell,date){
   if(name){span.style.backgroundColor=employeeColor(name);span.style.color='#fff';span.style.borderColor=employeeColor(name)}
   cell.insertBefore(span,detail);
  };
- for(const item of shifts.slice(0,2))summary(nm(item.user_id)+' · de garde',nm(item.user_id));
+ for(const item of shifts.slice(0,2))summary(nm(item.user_id)+' · présent l’après-midi',nm(item.user_id));
  if(requests.some(x=>x.status==='open'))summary('🤝 Remplaçant recherché');
  else if(requests.some(x=>x.status==='pending_manager'))summary('⏳ Validation attendue');
  else if(requests.some(x=>x.status==='approved'))summary('✓ Remplacement validé');
