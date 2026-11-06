@@ -891,7 +891,7 @@ $('sendLeave').onclick=async()=>{const ranges=leaveRanges.length?leaveRanges:($(
 $('compMode').onchange=()=>show('recoveryFields',$('compMode').value==='recovery');
 $('sendReplacement').onclick=async()=>{const leaveId=$('replaceLeave').value,mode=$('compMode').value;if(!leaveId){notice("Aucune demande disponible pour un remplacement.",true);return}
 const wd=$('replacementWorkDate').value,ws=$('replacementWorkStart').value,we=$('replacementWorkEnd').value;if(!wd||!ws||!we||ws>=we){notice('Indique le jour et les heures de remplacement.',true);return}const {data:leave,error:le}=await sb.from('leave_requests').select('start_date,end_date').eq('id',leaveId).single();if(le||wd<leave.start_date||wd>leave.end_date){notice('Le remplacement doit avoir lieu pendant les congés.',true);return}const {error}=await sb.rpc('propose_replacement',{p_leave_id:leaveId,p_mode:mode,p_recovery_date:null});if(error)notice(error.message,true);else{const {error:se}=await sb.from('replacement_work_slots').insert({leave_id:leaveId,replacement_user_id:user.id,work_date:wd,start_time:ws,end_time:we});notice(se?'Proposition enregistrée, mais les heures n’ont pas pu être sauvegardées : '+se.message:'Proposition et horaires transmis. Compensation confidentielle.',!!se);await refresh()}}
-async function renderBalances(){const accrual=await sb.rpc('apply_monthly_leave_accrual');if(accrual.error){console.error('Acquisition mensuelle non appliquée',accrual.error);$('myBalances').textContent='Erreur de calcul des congés : '+accrual.error.message;return;}let {data,error}=await sb.from('balances').select('*').eq('user_id',user.id).single();$('myBalances').innerHTML=error?'<p class="muted">Compteurs non initialisés.</p>':`<div class="grid"><div class="item"><span class="muted">N-1 : ${data.leave_n1} jours</span><h2>N : ${data.leave_n} jours</h2><small>Total : ${data.leave_days} jours</small></div></div>`}
+async function renderBalances(){const accrual=await sb.rpc('apply_monthly_leave_accrual');if(accrual.error){console.error('Acquisition mensuelle non appliquée',accrual.error);$('myBalances').textContent='Erreur de calcul des congés : '+accrual.error.message;return;}let {data,error}=await sb.from('balances').select('*').eq('user_id',user.id).single();$('myBalances').innerHTML=error?'<p class="muted">Compteurs non initialisés.</p>':`<div class="grid"><div class="item"><span class="muted">N-1 : ${data.leave_n1} jours</span><h2>N : ${data.leave_n} jours</h2><small>Total : ${data.leave_days} jours</small><p class="hint" style="margin:12px 0 0;font-size:13px">Les congés validés sont déduits en priorité du solde N-1, puis du solde N.</p></div></div>`}
 
 async function showRecoveryHours(){
  const el=$('myRecoveryHours');if(!el)return;
@@ -992,7 +992,7 @@ async function renderAdmin() {
       const fields=`
         <div class="grid">
           <div>
-            <label for="n1${b.user_id}">Congés de l’année précédente (N-1) — jours</label><input type="number" step=".5" id="n1${b.user_id}" value="${b.leave_n1}">
+            <p class="hint" style="margin:0 0 12px">Les jours de congés validés sont automatiquement déduits d’abord de N-1, puis de N.</p><label for="n1${b.user_id}">Congés de l’année précédente (N-1) — jours</label><input type="number" step=".5" id="n1${b.user_id}" value="${b.leave_n1}">
             <label for="n${b.user_id}">Congés de l’année en cours (N) — jours</label><input type="number" step=".5" id="n${b.user_id}" value="${b.leave_n}">
           </div>
           <div>
