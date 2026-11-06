@@ -1234,7 +1234,11 @@ if(tab!=='request'&&tab!=='recovery')(window.calendarLeaves || []).forEach(leave
   event.style.borderLeft=leave.status==='approved'?'4px solid #236c5b':'4px dashed #a66b12';
   event.textContent=absentName+(leave.status==='approved'?' · Congé validé':' · En attente');
   const replacement=leave.replacements?.find(x=>x.profiles?.full_name && (x.confirmed_at||x.replacement_user_id===user?.id||leave.user_id===user?.id||['owner','admin'].includes(profile?.role)));
-  if(tab==='replacement'&&leave.status==='approved'&&leave.user_id!==user?.id&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();showReplacementInline(cell,leave.id,date)}}if(replacement&&tab!=='overview'){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='white';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
+  if(tab==='replacement'&&leave.status==='approved'&&leave.user_id!==user?.id&&!replacement){event.style.cursor='pointer';event.title='Cliquer pour proposer un remplacement';event.onclick=(e)=>{e.stopPropagation();showReplacementInline(cell,leave.id,date)}}if(tab==='replacement'&&leave.status==='approved'&&['owner','admin'].includes(profile?.role)){
+   const force=document.createElement('button');force.type='button';force.textContent='Désigner un remplaçant';force.style.cssText='font-size:11px;padding:5px;margin-top:4px';
+   force.onclick=e=>{e.stopPropagation();showManagerAssignInline(cell,leave.id,date,false)};cell.appendChild(force);
+  }
+  if(replacement&&tab!=='overview'){const rep=document.createElement('div');rep.className='calendar-event';rep.style.background=employeeColor(replacement.profiles.full_name);rep.style.color='white';rep.textContent='↳ '+replacement.profiles.full_name+' · Remplacement proposé';cell.appendChild(event);cell.appendChild(rep)}
   else cell.appendChild(event);
 });
 
@@ -1313,6 +1317,12 @@ if(['overview','request','replacement'].includes(tab)){
   }
   if(tab==='overview'&&['owner','admin'].includes(profile?.role))cell.onclick=()=>openManualAbsencePicker(date);
  }
+}
+for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===date)){
+ if(!['overview','replacement','schedules'].includes(tab))continue;
+ const label=document.createElement('div');label.className='manager-assignment-label';
+ label.textContent='✓ '+nm(assignment.replacement_user_id)+' remplace · '+String(assignment.start_time).slice(0,5)+'–'+String(assignment.end_time).slice(0,5);
+ cell.appendChild(label);
 }
 grid.appendChild(cell);
   }
