@@ -248,6 +248,7 @@ document.querySelectorAll('[data-tab]').forEach(b => {
       'hidden',
       b.dataset.tab !== 'admin' || profile?.role !== 'owner'
     );
+    if(b.dataset.tab === 'admin' && profile?.role === 'owner')loadPasswordResetEmployees();
   });
 });
 async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
