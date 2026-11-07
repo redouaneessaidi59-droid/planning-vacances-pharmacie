@@ -656,16 +656,16 @@ tr:nth-child(even) td{background:#fafcfb}
  <span><i class="staffing-dot yellow"></i> Jaune : effectif réduit</span>
  <span><i class="staffing-dot red"></i> Rouge : aucun salarié disponible</span>
 </div>
-<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div class="calendar-grid-scroll"><div id="calendarGrid"></div></div><div class="calendar-ranking-details"><h3 class="ranking-visible-title">🏅 Classement des meilleurs remplaçants</h3><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden" hidden aria-hidden="true"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div></div>
+<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div class="calendar-grid-scroll"><div id="calendarGrid"></div></div><div class="calendar-ranking-details"><h3 class="ranking-visible-title">🏅 Classement des meilleurs remplaçants</h3><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden" hidden aria-hidden="true"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div></div>
 </section>
-<section id="overview" class="card team-requests-section"><p class="hint team-manager-hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>📋 Demandes de congés de l'équipe</h2><p class="team-requests-intro">Retrouvez ici les congés demandés par vos collègues et leur état d'avancement. Les détails privés restent réservés aux responsables.</p><div id="requestsList" aria-live="polite">Chargement…</div></section>
+<section id="overview" class="card team-requests-section"><p class="hint team-manager-hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>📋 Demandes de congés de l'équipe</h2><p class="team-requests-intro">Retrouvez ici les congés demandés par vos collègues et leur état d'avancement. Les détails des demandes restent confidentiels.</p><div id="requestsList" aria-live="polite">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>📝 Demander des congés</h2><p class="section-lead">Choisissez les dates souhaitées, ajoutez un commentaire si nécessaire, puis envoyez la demande à vos responsables.</p>
 <div class="grid"><div><label>Premier jour d'absence</label><input type="date" id="leaveStart"></div><div><label>Dernier jour d'absence</label><input type="date" id="leaveEnd"></div></div>
 <div id="rangePicker" class="card" style="background:#f7faf8"><strong>Périodes sélectionnées</strong><p class="hint">Clique une fois sur le début, puis sur la fin. Pour une journée seule, sélectionne-la deux fois avec le bouton « Ajouter cette journée ». Recommence pour ajouter une autre période.</p><div id="rangeSummary">Aucune période sélectionnée.</div><button type="button" id="addSingleDay" class="secondary" style="display:none">Terminer cette journée</button><button type="button" id="clearRanges" class="secondary">Effacer la sélection</button></div><p class="hint">Préavis interne : 7 jours pour une absence de 5 jours maximum, 15 jours au-delà. Ces délais ne remplacent pas les dispositions légales ou conventionnelles. La direction vise une réponse sous 7 jours.</p><label>Type de demande</label><select id="absenceKind"><option value="leave">Congés payés</option><option value="recovery">Récupération (1 jour pris = 1 jour déduit)</option></select><div id="recoveryInline" class="hidden"><p class="hint">Les récupérations sont comptées uniquement sur les jours réellement pris, indépendamment des congés payés.</p><label>Date de récupération</label><input id="inlineRecDate" type="date"><label>Commentaire récupération</label><input id="inlineRecNote"><button type="button" id="inlineRecSend">Demander une récupération</button><div id="inlineRecList"></div></div><label>Commentaire (facultatif)</label><textarea id="leaveNote" rows="2"></textarea><div class="actions"><button id="sendLeave">Envoyer la demande</button><button type="button" id="retryLeaveEmail">Tester l’e-mail de ma dernière demande</button></div><div id="emailTestResult" class="hint" aria-live="polite"></div>
 </section>
 <section id="replacement" class="card hidden">
 <h2>🤝 Proposer un remplacement</h2><p class="hint">Repère les journées à couvrir dans le calendrier, puis clique sur le nom du collègue absent pour choisir tes heures et ta compensation.</p><div class="item"><strong>Lecture du calendrier</strong><p class="hint">🟢 À couvrir : au moins 2 collègues présents · 🟡 À renforcer : 1 seul collègue présent sur une partie de la journée, notamment le midi · 🔴 Prioritaire : aucun collègue présent sur au moins un créneau, midi compris. Le niveau correspond au moment où l’effectif est le plus faible, selon les plannings et absences connus.</p></div><div id="replacementNeeds" class="item">Chargement des besoins…</div><label>Demande à remplacer</label><select id="replaceLeave"></select>
-<div class="grid"><div><label>Jour du remplacement</label><input id="replacementWorkDate" type="date"></div><div><label>Début du remplacement</label><input id="replacementWorkStart" type="time" value="09:00"></div><div><label>Fin du remplacement</label><input id="replacementWorkEnd" type="time" value="19:00"></div></div><label>Mode de compensation (visible uniquement par la direction)</label><select id="compMode"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select>
+<div class="grid"><div><label>Jour du remplacement</label><input id="replacementWorkDate" type="date"></div><div><label>Début du remplacement</label><input id="replacementWorkStart" type="time" value="09:00"></div><div><label>Fin du remplacement</label><input id="replacementWorkEnd" type="time" value="19:00"></div></div><label>Mode de compensation</label><select id="compMode"><option value="recovery">Récupération</option><option value="paid">Rémunération</option></select>
 <p class="hint">Les heures choisies en récupération sont cumulées après validation du remplacement, sans date de récupération à fixer maintenant.</p>
 <small class="privacy">🔒 Le choix « récupération » ou « rémunération » et les informations associées ne sont pas affichés aux collègues.</small>
 <div class="actions"><button id="sendReplacement">Envoyer ma proposition</button></div></section>
@@ -682,7 +682,7 @@ tr:nth-child(even) td{background:#fafcfb}
 <p class="hint">Les congés s'acquièrent à raison de 2,5 jours ouvrables par mois, soit 30 jours pour une année complète. Le calcul peut dépendre de la date réelle de reprise.</p>
 </section>
 <section id="balances" class="card hidden"><h2>📊 Mes compteurs</h2><p class="section-lead">Consultez vos jours de congés et vos récupérations disponibles.</p><div id="myBalances">Chargement…</div><div class="item"><h3>📣 Mes remplacements attribués par la direction</h3><p class="hint">Consulte les dates et horaires qui t’ont été attribués. Si une réponse est nécessaire, tu peux accepter ou refuser ici.</p><div id="myAssignmentNotificationsBalances"></div></div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
-<section id="overtimeLedger" class="card hidden"><h2>📊 Compteur heures supp</h2><p class="section-lead">Suivi mensuel des heures à payer. Accès réservé à Redouane et Ibrahim.</p><div id="overtimeLedgerContent" aria-live="polite">Chargement…</div></section><section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p>
+<section id="overtimeLedger" class="card hidden"><h2>📊 Compteur heures supp</h2><p class="section-lead">Suivi mensuel des heures à payer, par salarié, avec récapitulatif des mois précédents.</p><div id="overtimeLedgerContent" aria-live="polite">Chargement…</div></section><section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p>
 <div id="saturdayAfternoonHours" class="saturday-hours-manager" aria-live="polite"><p>Chargement des samedis après-midi…</p></div>
 <div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>⚙️ Gestion de la pharmacie</h2><h3>📥 Demandes de congés à traiter</h3><p class="admin-intro">Consultez chaque demande, puis choisissez une décision. Les demandes en attente apparaissent ici.</p><div id="adminRequests"></div><h3 style="margin-top:32px">📊 Soldes de congés des salariés</h3><p class="admin-intro">Modifiez les jours disponibles, puis enregistrez les compteurs de chaque salarié.</p><div id="allBalances"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
@@ -690,7 +690,7 @@ tr:nth-child(even) td{background:#fafcfb}
   <button id="createTeamBtn" type="button">Créer les comptes de l'équipe</button>
    <div id="teamCreationResult"></div>
   <hr><h3>Réinitialiser le mot de passe d'un salarié</h3>
-  <p class="hint">Réservé au propriétaire. Le salarié devra utiliser le nouveau mot de passe à sa prochaine connexion.</p>
+  <p class="hint">Le salarié devra utiliser le nouveau mot de passe à sa prochaine connexion.</p>
   <div class="grid">
     <div><label for="resetEmployee">Salarié</label><select id="resetEmployee"></select></div>
     <div><label for="resetEmployeePassword">Nouveau mot de passe (10 caractères minimum)</label><input id="resetEmployeePassword" type="password" autocomplete="new-password"></div>
@@ -1134,7 +1134,7 @@ async function renderPaidHours(){
  if(transfers.error){const err=document.createElement('p');err.textContent='Transferts indisponibles : '+transfers.error.message;box.appendChild(err)}
  else for(const r of transferredRows){const line=document.createElement('p');line.textContent=r.employee_name+' · '+fmt(r.work_date)+' · '+hm(r.minutes)+' transférées en heures à payer';box.appendChild(line)}
  const manageTitle=document.createElement('h3');manageTitle.textContent='Basculer des heures de récupération en heures à payer';box.appendChild(manageTitle);
- const explain=document.createElement('p');explain.className='hint';explain.textContent='Direction uniquement · Sélectionne un remplacement validé, puis indique le total exact à payer sur ce remplacement. Le reste reste en récupération. Saisir 0 annule le transfert.';box.appendChild(explain);
+ const explain=document.createElement('p');explain.className='hint';explain.textContent='Sélectionne un remplacement validé, puis indique le total exact à payer sur ce remplacement. Le reste reste en récupération. Saisir 0 annule le transfert.';box.appendChild(explain);
  if(sources.error){const err=document.createElement('p');err.textContent='Gestion indisponible : '+sources.error.message;box.appendChild(err)}
  else if(!sources.data?.length){const empty=document.createElement('p');empty.textContent='Aucun remplacement validé en récupération pour le moment.';box.appendChild(empty)}
  else {
@@ -1178,7 +1178,7 @@ async function renderAdmin() {
 
   if (profile.role !== 'owner' && profile.role !== 'admin') {
     $('allBalances').innerHTML =
-      '<p class="muted">Modification des compteurs réservée aux responsables.</p>';
+      '<p class="muted">Modification des compteurs indisponible.</p>';
   } else {
     // Deux salariées temporairement absentes restent accessibles en version compacte.
     const absentReason = name => {
@@ -1346,7 +1346,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
     }
   } else {
     $('privateDetails').innerHTML =
-      '<p class="muted">Les modalités de compensation sont réservées à Redouane.</p>';
+      '<p class="muted">Les modalités de compensation ne sont pas disponibles.</p>';
   }
 }
 
@@ -1510,7 +1510,7 @@ $('createTeamBtn').onclick = async () => {
   const btn = $('createTeamBtn');
   const result = $('teamCreationResult');
   if (!user || profile?.role !== 'owner') {
-    result.textContent = 'Accès réservé au propriétaire.';
+    result.textContent = 'Action non autorisée.';
     return;
   }
   if (!confirm('Créer les comptes des 5 salariés ?')) return;
