@@ -2113,8 +2113,7 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
    const current=new Date(date+'T12:00:00');
    const weeks=Math.round((current-anchor)/604800000);
    // Le samedi est toujours ouvert le matin ; l'après-midi une semaine sur deux.
-   badges.unshift({text:'Samedi ouvert matin · 9h–12h30',kind:'neutral'});
-   if(weeks%2===0)badges.splice(1,0,{text:'Samedi ouvert après-midi · 14h–19h',kind:'neutral'});
+   badges.unshift({text:weeks%2===0?'Ouvert toute la journée':'Ouvert matin',kind:'neutral'});
  }
  const maxBadges=3;
  for(const info of badges.slice(0,maxBadges)){
