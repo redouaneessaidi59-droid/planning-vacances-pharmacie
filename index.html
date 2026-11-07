@@ -566,6 +566,27 @@ tr:nth-child(even) td{background:#fafcfb}
 .readable-schedule-time.replacement{background:#dbf4e3;color:#125b38;border:1px solid #a6dcb8;font-size:14px;line-height:1.5;white-space:normal}
 .readable-schedule-time.unscheduled{background:#f1f2f3;color:#64736b}
 @media(max-width:650px){.readable-schedule-person .readable-schedule-periods{min-width:0;justify-content:flex-start;width:100%}.readable-schedule-hours-heading{text-align:left}}
+
+/* Compteur du samedi après-midi — visible uniquement dans l'espace de gestion */
+.saturday-hours-manager{margin:18px 0 27px;padding:20px;border:1px solid #cfded5;border-radius:16px;background:#f8fbf9}
+.saturday-hours-manager>h3{margin:0 0 8px;color:#194732;font-size:21px}
+.saturday-hours-manager .hint{line-height:1.55;font-size:14px}
+.sat-hours-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}
+.sat-hours-kpi{display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid #dae6dd;border-radius:12px;padding:15px}
+.sat-hours-kpi strong{font-size:24px;color:#17452f;line-height:1.1}
+.sat-hours-kpi span{font-size:13px;font-weight:650;color:#5b7263}
+.sat-hours-kpi.pay{border-color:#92c8a4;background:#e9f6ed}
+.sat-hours-item{background:#fff;border:1px solid #dae7dd;padding:17px 18px;border-radius:12px;margin:12px 0}
+.sat-hours-top{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.sat-hours-top strong{font-size:16px}
+.sat-hours-state{padding:5px 10px;border-radius:99px;background:#edf1f3;color:#53636b;font-weight:750;font-size:12px}
+.sat-hours-state.confirmed{background:#d9f1e1;color:#1c623b}
+.sat-hours-week{font-size:14px;color:#50665a;margin:12px 0 7px}
+.sat-hours-billing{font-weight:750;color:#155d37;font-size:14px;line-height:1.5}
+.sat-hours-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.sat-hours-actions select{width:170px;min-height:44px;font-size:15px}
+.sat-hours-actions button{min-height:44px;font-size:14px}
+@media(max-width:650px){.saturday-hours-manager{padding:14px}.sat-hours-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.sat-hours-kpi strong{font-size:20px}.sat-hours-actions select,.sat-hours-actions button{width:100%}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -646,7 +667,9 @@ tr:nth-child(even) td{background:#fafcfb}
 <p class="hint">Les congés s'acquièrent à raison de 2,5 jours ouvrables par mois, soit 30 jours pour une année complète. Le calcul peut dépendre de la date réelle de reprise.</p>
 </section>
 <section id="balances" class="card hidden"><h2>📊 Mes compteurs</h2><p class="section-lead">Consultez vos jours de congés et vos récupérations disponibles.</p><div id="myBalances">Chargement…</div><div class="item"><h3>📣 Mes remplacements attribués par la direction</h3><p class="hint">Consulte les dates et horaires qui t’ont été attribués. Si une réponse est nécessaire, tu peux accepter ou refuser ici.</p><div id="myAssignmentNotificationsBalances"></div></div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
-<section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p><div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>⚙️ Gestion de la pharmacie</h2><h3>📥 Demandes de congés à traiter</h3><p class="admin-intro">Consultez chaque demande, puis choisissez une décision. Les demandes en attente apparaissent ici.</p><div id="adminRequests"></div><h3 style="margin-top:32px">📊 Soldes de congés des salariés</h3><p class="admin-intro">Modifiez les jours disponibles, puis enregistrez les compteurs de chaque salarié.</p><div id="allBalances"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
+<section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p>
+<div id="saturdayAfternoonHours" class="saturday-hours-manager" aria-live="polite"><p>Chargement des samedis après-midi…</p></div>
+<div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>⚙️ Gestion de la pharmacie</h2><h3>📥 Demandes de congés à traiter</h3><p class="admin-intro">Consultez chaque demande, puis choisissez une décision. Les demandes en attente apparaissent ici.</p><div id="adminRequests"></div><h3 style="margin-top:32px">📊 Soldes de congés des salariés</h3><p class="admin-intro">Modifiez les jours disponibles, puis enregistrez les compteurs de chaque salarié.</p><div id="allBalances"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
   <h2>Gestion des comptes salariés</h2>
   <button id="createTeamBtn" type="button">Créer les comptes de l'équipe</button>
@@ -951,8 +974,86 @@ async function showRecoveryHours(){
  const info=document.createElement('small');info.className='muted';info.textContent='Solde net après les récupérations validées et les transferts vers les heures rémunérées.';el.appendChild(info);
 }
 let paidHoursMonth=new Date().toISOString().slice(0,7);
-async function renderPaidHours(){
+async 
+async function renderSaturdayAfternoonHours(){
+ if(!isManagementUser())return;
+ const container=$('saturdayAfternoonHours');if(!container)return;
+ container.textContent='Chargement du compteur des samedis après-midi…';
+ const month=(typeof paidHoursMonth==='string'&&paidHoursMonth)||localISO(new Date()).slice(0,7);
+ const {data,error}=await sb.rpc('manager_saturday_afternoon_report',{p_month:month+'-01'});
+ if(error){
+  container.textContent='Compteur des samedis indisponible : '+error.message;
+  return;
+ }
+ const entries=data||[];
+ const formatMinutes=n=>{
+  const value=Math.max(0,Number(n)||0);
+  return Math.floor(value/60)+' h '+String(value%60).padStart(2,'0');
+ };
+ const title=document.createElement('h3');title.textContent='🕒 Samedi après-midi · suivi des heures';
+ const lead=document.createElement('p');lead.className='hint';
+ lead.textContent='Accès réservé à la direction. Les heures prévues ne passent à « effectué confirmé » qu’après validation. Pour Redouane : au-delà de 35 h/semaine, heures à payer à +25 %. Pour les autres : compteur à qualifier.';
+ const totals=document.createElement('div');totals.className='sat-hours-kpis';
+ const realized=entries.filter(x=>x.work_state==='confirmé');
+ const sum=(list,key)=>list.reduce((n,x)=>n+Number(x[key]||0),0);
+ for(const [caption,minutes,klass] of [
+  ['Samedi après-midi prévus',sum(entries,'planned_minutes'),''],
+  ['Heures effectuées confirmées',sum(realized,'worked_minutes'),''],
+  ['Redouane · HS +25 % à payer',sum(realized.filter(x=>String(x.employee_name).toLowerCase().includes('redouane')),'overtime_25_minutes'),'pay'],
+  ['Autres · heures à qualifier',sum(realized.filter(x=>!String(x.employee_name).toLowerCase().includes('redouane')),'worked_minutes'),'']
+ ]){
+  const tile=document.createElement('div');tile.className='sat-hours-kpi '+klass;
+  const value=document.createElement('strong');value.textContent=formatMinutes(minutes);
+  const label=document.createElement('span');label.textContent=caption;
+  tile.append(value,label);totals.appendChild(tile);
+ }
+ container.replaceChildren(title,lead,totals);
+ const note=document.createElement('p');note.className='hint';
+ note.textContent='Calcul hebdomadaire à partir des horaires habituels enregistrés et des samedis affectés. Une absence, une pause ou un changement d’horaire peut nécessiter une correction avant la paie. Les heures de remplacement déjà suivies ailleurs ne sont pas ajoutées une deuxième fois au total à payer.';
+ container.appendChild(note);
+ if(!entries.length){const p=document.createElement('p');p.className='sat-hours-empty';p.textContent='Aucun samedi après-midi attribué pour ce mois.';container.appendChild(p);return}
+ const sorted=entries.slice().sort((a,b)=>a.work_date.localeCompare(b.work_date)||a.employee_name.localeCompare(b.employee_name,'fr'));
+ for(const x of sorted){
+  const item=document.createElement('div');item.className='sat-hours-item';
+  const top=document.createElement('div');top.className='sat-hours-top';
+  const name=document.createElement('strong');name.textContent=x.employee_name+' · '+fmt(x.work_date);
+  const state=document.createElement('span');state.className='sat-hours-state '+(x.work_state==='confirmé'?'confirmed':'');
+  state.textContent=x.work_state==='confirmé'?'✓ Effectué confirmé':x.work_state==='prévu'?'Prévu':'À confirmer';
+  top.append(name,state);item.appendChild(top);
+  const weekday=document.createElement('p');weekday.className='sat-hours-week';
+  weekday.textContent='Semaine : '+formatMinutes(x.base_week_minutes)+' habituelles + '+formatMinutes(x.worked_minutes)+' du samedi = '+formatMinutes(x.weekly_total_minutes);
+  item.appendChild(weekday);
+  const billing=document.createElement('div');billing.className='sat-hours-billing';
+  billing.textContent=x.classification==='À qualifier'?
+    'Samedi après-midi : '+formatMinutes(x.worked_minutes)+' · À qualifier selon son contrat':
+    'Heures supplémentaires +25 % · '+formatMinutes(x.overtime_25_minutes)+' · À payer'+(x.work_state!=='confirmé'?' (prévision, non validée)':'');
+  item.appendChild(billing);
+  if(x.work_state!=='prévu'){
+   const actions=document.createElement('div');actions.className='sat-hours-actions';
+   const select=document.createElement('select');select.setAttribute('aria-label','Durée réellement effectuée');
+   for(const mins of [300,270,240,210,180,150,120,90,60,30,0]){
+    const opt=document.createElement('option');opt.value=String(mins);opt.textContent=mins===0?'Non travaillé':formatMinutes(mins);
+    select.appendChild(opt);
+   }
+   select.value=String(x.worked_minutes);
+   const save=document.createElement('button');save.type='button';save.textContent=x.work_state==='confirmé'?'Corriger les heures':'Confirmer les heures effectuées';
+   save.onclick=async()=>{
+    const n=Number(select.value);
+    if(!confirm('Enregistrer '+formatMinutes(n)+' réellement effectuées pour '+x.employee_name+' le '+fmt(x.work_date)+' ?'))return;
+    save.disabled=true;
+    const {error}=await sb.rpc('manager_confirm_saturday_afternoon',{p_employee:x.employee_id,p_work_date:x.work_date,p_minutes:n});
+    if(error){notice(error.message,true);save.disabled=false;return}
+    notice('Heures du samedi mises à jour.');await renderSaturdayAfternoonHours();
+   };
+   actions.append(select,save);item.appendChild(actions);
+  }
+  container.appendChild(item);
+ }
+}
+
+function renderPaidHours(){
  if(!['owner','admin'].includes(profile?.role))return;
+ renderSaturdayAfternoonHours();
  const box=$('paidHoursContent');box.textContent='Chargement…';
  const [paid,recovery,comp,transfers,sources]=await Promise.all([sb.rpc('manager_paid_replacement_hours'),sb.rpc('replacement_recovery_hours'),sb.from('saturday_cover_compensation').select('cover_id,volunteer_id,mode'),sb.rpc('manager_transferred_paid_hours'),sb.rpc('recovery_transfer_sources')]);
  if(paid.error){box.textContent='Erreur : '+paid.error.message;return}
