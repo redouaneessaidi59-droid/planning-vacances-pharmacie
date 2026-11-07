@@ -1042,7 +1042,7 @@ async function renderOvertimeLedger(){
   history.appendChild(row);
  }
  root.appendChild(history);
- root.appendChild(element('p','hint','Alimentation automatique dès qu’un remplacement est accepté directement en paiement ou que des heures sont transférées depuis la récupération. Les samedis après-midi de Redouane à +25 % sont automatiquement comptabilisés dès leur inscription au planning. Les heures à payer ne signifient pas qu’elles ont déjà été versées sur la fiche de paie. Le compteur personnel des salariés reste inchangé.'));
+ root.appendChild(element('p','hint','Alimentation automatique dès qu’un remplacement est accepté directement en paiement ou que des heures sont transférées depuis la récupération. Les samedis après-midi de Redouane à +25 % sont automatiquement comptabilisés à partir du lendemain de la journée inscrite au planning ; les samedis futurs ne sont pas ajoutés aux totaux. Les heures à payer ne signifient pas qu’elles ont déjà été versées sur la fiche de paie. Le compteur personnel des salariés reste inchangé.'));
 }
 
 let paidHoursMonth=new Date().toISOString().slice(0,7);
@@ -1063,13 +1063,13 @@ async function renderSaturdayAfternoonHours(){
  };
  const title=document.createElement('h3');title.textContent='🕒 Samedi après-midi · suivi des heures';
  const lead=document.createElement('p');lead.className='hint';
- lead.textContent='Les heures du samedi après-midi sont comptabilisées automatiquement dès leur inscription au planning. Pour Redouane : au-delà de 35 h/semaine, heures à payer à +25 %. Pour les autres : heures à qualifier selon le contrat.';
+ lead.textContent='Les samedis futurs restent prévus sans être comptabilisés. Les heures passent automatiquement dans le compteur le lendemain de la journée prévue, sans validation manuelle. Pour Redouane : au-delà de 35 h/semaine, heures à payer à +25 %.';
  const totals=document.createElement('div');totals.className='sat-hours-kpis';
- const realized=entries;
+ const realized=entries.filter(x=>x.work_state==='comptabilisé');
  const sum=(list,key)=>list.reduce((n,x)=>n+Number(x[key]||0),0);
  for(const [caption,minutes,klass] of [
   ['Samedi après-midi prévus',sum(entries,'planned_minutes'),''],
-  ['Heures inscrites au compteur',sum(realized,'worked_minutes'),''],
+  ['Heures comptabilisées (journées terminées)',sum(realized,'worked_minutes'),''],
   ['Redouane · HS +25 % à payer',sum(realized.filter(x=>String(x.employee_name).toLowerCase().includes('redouane')),'overtime_25_minutes'),'pay'],
   ['Autres · heures à qualifier',sum(realized.filter(x=>!String(x.employee_name).toLowerCase().includes('redouane')),'worked_minutes'),'']
  ]){
@@ -1080,7 +1080,7 @@ async function renderSaturdayAfternoonHours(){
  }
  container.replaceChildren(title,lead,totals);
  const note=document.createElement('p');note.className='hint';
- note.textContent='Comptage automatique dès l’inscription au planning : aucune confirmation manuelle n’est nécessaire. Le calcul utilise les horaires hebdomadaires enregistrés ; les absences et changements réels doivent être vérifiés avant la paie. Le même créneau n’est pas compté deux fois dans les heures à payer.';
+ note.textContent='Une journée future, y compris aujourd’hui avant sa fin, est seulement prévue. Le lendemain, les heures inscrites au planning sont comptabilisées automatiquement. Les absences et changements réels doivent être vérifiés avant la paie, sans double comptage.';
  container.appendChild(note);
  if(!entries.length){const p=document.createElement('p');p.className='sat-hours-empty';p.textContent='Aucun samedi après-midi attribué pour ce mois.';container.appendChild(p);return}
  const sorted=entries.slice().sort((a,b)=>a.work_date.localeCompare(b.work_date)||a.employee_name.localeCompare(b.employee_name,'fr'));
@@ -1089,14 +1089,15 @@ async function renderSaturdayAfternoonHours(){
   const top=document.createElement('div');top.className='sat-hours-top';
   const name=document.createElement('strong');name.textContent=x.employee_name+' · '+fmt(x.work_date);
   const state=document.createElement('span');state.className='sat-hours-state '+(x.work_state==='confirmé'?'confirmed':'');
-  state.textContent='✓ Comptabilisé automatiquement';
+  state.textContent=x.work_state==='prévu'?'Prévu · non comptabilisé':'✓ Comptabilisé automatiquement';
   top.append(name,state);item.appendChild(top);
   const weekday=document.createElement('p');weekday.className='sat-hours-week';
   weekday.textContent='Semaine : '+formatMinutes(x.base_week_minutes)+' habituelles + '+formatMinutes(x.worked_minutes)+' du samedi = '+formatMinutes(x.weekly_total_minutes);
   item.appendChild(weekday);
   const billing=document.createElement('div');billing.className='sat-hours-billing';
-  billing.textContent=x.classification==='À qualifier'?
-    'Samedi après-midi : '+formatMinutes(x.worked_minutes)+' · À qualifier selon son contrat':
+  billing.textContent=x.work_state==='prévu'?
+    'Samedi après-midi : '+formatMinutes(x.worked_minutes)+' prévu'+(x.classification==='À qualifier'?' · À qualifier selon son contrat':' · HS +25 % à payer après la journée'):
+    x.classification==='À qualifier'?'Samedi après-midi : '+formatMinutes(x.worked_minutes)+' · À qualifier selon son contrat':
     'Heures supplémentaires +25 % · '+formatMinutes(x.overtime_25_minutes)+' · À payer';
   item.appendChild(billing);
 
