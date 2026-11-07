@@ -2406,7 +2406,6 @@ if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   else cell.appendChild(event);
 });
 
-if(tab==='schedules')formatReadableScheduleDay(cell,date,holiday);
 if(new Date(year,month,day).getDay()===6){const anchor=new Date(2026,10,7,12),current=new Date(year,month,day,12);const weeks=Math.round((current-anchor)/604800000);const afternoon=weeks%2===0;const hours=document.createElement('div');hours.className='calendar-saturday-hours';hours.textContent=afternoon?'Ouvert 9 h–12 h 30 · 14 h–19 h':'Ouvert 9 h–12 h 30';cell.appendChild(hours);const assignments=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);for(const assignment of assignments){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent=(afternoon?'Après-midi · ':'Samedi · ')+person;cell.appendChild(sat);if(tab==='saturdays'&&assignment.user_id===user?.id){sat.style.cursor='pointer';sat.title='Cliquer pour demander un remplaçant';sat.onclick=e=>{e.stopPropagation();saturdaySlotMenu(cell,date)}}}
 for(const cover of (typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.saturday_date===date&&['open','pending_manager','approved'].includes(x.status))){
  const event=document.createElement('div');event.className='calendar-event';
@@ -2471,6 +2470,7 @@ for(const assignment of (window.managerAssignments||[]).filter(a=>a.work_date===
 }
 formatMainCalendarSummary(cell,date,sunday,holiday);
 formatSaturdayCalendarDay(cell,date);
+if(tab==='schedules')formatReadableScheduleDay(cell,date,holiday);
 if(holiday){cell.classList.add('holiday-calendar-day');cell.title='Jour férié : '+holiday;cell.style.backgroundColor='#e5e7eb';cell.style.backgroundImage='none';cell.style.borderColor='#bfc7ce';cell.style.color='#495760';}
 grid.appendChild(cell);
   }
