@@ -526,6 +526,37 @@ tr:nth-child(even) td{background:#fafcfb}
 #calendarSection .ranking-visible-title{font-size:18px;font-weight:800;color:#1c5539;margin:4px 9px 13px}
 #calendarSection .calendar-ranking-details .replacement-ranking{margin:0!important;display:block!important;visibility:visible!important}
 #calendarSection .replacement-rank-row{min-height:37px}
+
+/* Vue des horaires aérée : plus aucune jauge verticale dans le calendrier */
+#calendarSection:has(.readable-schedule-day) .calendar-grid-scroll{overflow-x:auto}
+#calendarSection:has(.readable-schedule-day) #calendarGrid{min-width:1010px!important;gap:12px!important;grid-template-columns:repeat(7,minmax(0,1fr))!important}
+#calendarSection .readable-schedule-day{box-sizing:border-box;display:flex!important;flex-direction:column;align-items:stretch;gap:10px!important;min-height:184px!important;padding:15px!important;background:#fff!important;border:1.5px solid #d5e5da!important;border-radius:14px!important;box-shadow:0 2px 9px #1d392911!important;overflow:hidden!important;color:#233f31!important}
+#calendarSection .readable-schedule-day>strong{font-size:22px!important;font-weight:850!important;color:#244734!important}
+#calendarSection .readable-schedule-chip{font-size:14px;font-weight:750;line-height:1.4;border-radius:9px;padding:9px 10px;overflow-wrap:anywhere}
+#calendarSection .readable-schedule-chip.headcount{background:#edf6ef;color:#22553a;border:1px solid #d6e9da}
+#calendarSection .readable-schedule-chip.absence{background:#fce8e6;color:#8e3a33}
+#calendarSection .readable-schedule-chip.opening{background:#eaf0fa;color:#325b91}
+#calendarSection .readable-schedule-chip.holiday{background:#d1d5db;color:#374151}
+#calendarSection .readable-schedule-hint{font-size:13px;font-weight:700;color:#41765a;margin-top:auto;padding-top:6px}
+#calendarSection .readable-schedule-day:hover,#calendarSection .readable-schedule-day:focus-visible{border-color:#3d8664!important;box-shadow:0 3px 16px #154d2a22!important;outline:none}
+#calendarSection .readable-schedule-day.holiday-calendar-day{background:#e5e7eb!important;border-color:#bdc6cd!important}
+#calendarSection .readable-schedule-day.holiday-calendar-day>strong{color:#374151!important}
+.readable-schedule-dialog{width:min(94vw,760px);max-height:88vh;overflow:auto;padding:0;border:0;border-radius:18px;background:#fff;color:#213f30;box-shadow:0 24px 80px #091d1455}
+.readable-schedule-dialog::backdrop{background:#0e2119a8}
+.readable-schedule-dialog-header{display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:3;background:#eaf5ed;border-bottom:1px solid #d4e4d9;padding:22px 25px}
+.readable-schedule-dialog-header h2{font-size:22px;margin:0;line-height:1.3;color:#1a5035}
+.readable-schedule-dialog-header p{font-size:15px;font-weight:700;margin:6px 0 0;color:#4d6a55}
+.readable-schedule-dialog-header button{flex-shrink:0}
+.readable-schedule-dialog-body{padding:20px 25px}
+.readable-schedule-person{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 0;border-bottom:1px solid #e0ebe3;flex-wrap:wrap}
+.readable-schedule-person-name{display:flex;align-items:center;gap:12px;font-size:16px}
+.readable-schedule-person-dot{width:15px;height:15px;border-radius:50%;flex-shrink:0}
+.readable-schedule-periods{display:flex;gap:8px;flex-wrap:wrap}
+.readable-schedule-time{font-size:15px;font-weight:750;padding:8px 10px;border-radius:8px;background:#ecf5f0;color:#21553a}
+.readable-schedule-time.absent{background:#fae5e2;color:#913b34}
+.readable-schedule-footer{font-size:13px;line-height:1.5;color:#66796b;margin:20px 0 2px}
+.readable-schedule-holiday{padding:18px;background:#e5e7eb;border-radius:10px;font-size:17px;font-weight:750;color:#374151}
+@media(max-width:650px){#calendarSection .readable-schedule-day{min-height:164px!important;padding:11px!important}#calendarSection .readable-schedule-chip{font-size:13px;padding:7px 8px}.readable-schedule-dialog-header{padding:16px;flex-wrap:wrap}.readable-schedule-dialog-body{padding:16px}.readable-schedule-person{align-items:flex-start;flex-direction:column}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -2186,6 +2217,82 @@ function formatMainCalendarSummary(cell,date,sunday,holiday){
  cell.onkeydown=e=>{if(e.target!==cell)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
 }
 
+
+function formatReadableScheduleDay(cell,date,holiday){
+ // Calendrier de l'équipe : synthèse courte, horaires détaillés exclusivement en fenêtre.
+ const oldContent=[...cell.children].filter(x=>x.tagName!=='STRONG');
+ oldContent.forEach(x=>x.remove());
+ cell.classList.add('readable-schedule-day','calendar-clickable');
+ cell.dataset.scheduleDate=date;
+ const weekday=new Date(date+'T12:00:00').getDay();
+ const addChip=(label,klass)=>{const x=document.createElement('div');x.className='readable-schedule-chip '+klass;x.textContent=label;cell.appendChild(x);return x};
+ const saturdayOpening=()=>{
+   const weeks=Math.round((new Date(date+'T12:00:00')-new Date('2026-11-07T12:00:00'))/604800000);
+   return weeks%2===0?'Ouvert toute la journée':'Ouvert matin';
+ };
+ if(holiday){
+   cell.classList.add('holiday-calendar-day');
+   addChip('Jour férié : '+holiday,'holiday');
+ }else if(weekday===6) addChip(saturdayOpening(),'opening');
+ const slots=!holiday?scheduleBars(date):[];
+ const groups=new Map();
+ for(const item of slots){const n=item.name;if(!groups.has(n))groups.set(n,[]);groups.get(n).push(item)}
+ const manual=(window.manualAbsences||[]).filter(x=>x.absence_date===date);
+ const approvedLeaves=(window.calendarLeaves||[]).filter(x=>x.status==='approved'&&date>=x.start_date&&date<=x.end_date);
+ const recoveries=(window.approvedAbsences||[]).filter(x=>x.date===date);
+ const absentNames=new Set([...manual.map(x=>nm(x.employee_id)),...approvedLeaves.map(x=>x.profiles?.full_name||nm(x.user_id))]);
+ const attendance=[...groups.keys()].filter(name=>!absentNames.has(name)&&!recoveries.some(r=>nm(r.user_id)===name&&!r.start&&!r.end));
+ if(!holiday){
+  addChip(attendance.length+' salarié'+(attendance.length!==1?'s':'')+' prévu'+(attendance.length!==1?'s':''),'headcount');
+  if(absentNames.size)addChip(absentNames.size+' absence'+(absentNames.size!==1?'s':''),'absence');
+ }
+ const hint=document.createElement('div');hint.className='readable-schedule-hint';hint.textContent='Voir les horaires';cell.appendChild(hint);
+ const open=()=>{
+  document.querySelectorAll('dialog.readable-schedule-dialog[open]').forEach(d=>d.close());
+  const dialog=document.createElement('dialog');dialog.className='readable-schedule-dialog';
+  const header=document.createElement('div');header.className='readable-schedule-dialog-header';
+  const heading=document.createElement('div');
+  const title=document.createElement('h2');title.textContent='Planning du '+new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  heading.appendChild(title);
+  const summary=document.createElement('p');summary.textContent=holiday?'Jour férié : '+holiday:(weekday===6?saturdayOpening()+' · ':'')+attendance.length+' salarié(s) prévu(s)';
+  heading.appendChild(summary);
+  const close=document.createElement('button');close.type='button';close.className='secondary';close.textContent='✕ Fermer';close.onclick=()=>dialog.close();
+  header.append(heading,close);
+  const body=document.createElement('div');body.className='readable-schedule-dialog-body';
+  if(holiday){const h=document.createElement('p');h.className='readable-schedule-holiday';h.textContent='Jour férié : '+holiday+' — pharmacie fermée';body.appendChild(h)}
+  else{
+   const ordered=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr'));
+   if(!ordered.length){const empty=document.createElement('p');empty.textContent='Aucun horaire renseigné pour cette journée.';body.appendChild(empty)}
+   for(const [name,periods] of ordered){
+    const row=document.createElement('div');row.className='readable-schedule-person';
+    const person=document.createElement('div');person.className='readable-schedule-person-name';
+    const dot=document.createElement('span');dot.className='readable-schedule-person-dot';dot.style.backgroundColor=employeeColor(name);
+    const label=document.createElement('strong');label.textContent=name;person.append(dot,label);
+    const times=document.createElement('div');times.className='readable-schedule-periods';
+    const absent=absentNames.has(name);
+    const recovery=recoveries.find(r=>nm(r.user_id)===name);
+    if(absent){const c=document.createElement('span');c.className='readable-schedule-time absent';c.textContent='Absent · congé validé';times.appendChild(c)}
+    else if(recovery&&!recovery.start&&!recovery.end){const c=document.createElement('span');c.className='readable-schedule-time absent';c.textContent='Récupération';times.appendChild(c)}
+    else for(const item of periods){const c=document.createElement('span');c.className='readable-schedule-time';c.textContent=item.start+' – '+item.end;times.appendChild(c)}
+    row.append(person,times);body.appendChild(row);
+   }
+   for(const name of absentNames){
+    if(groups.has(name))continue;
+    const row=document.createElement('div');row.className='readable-schedule-person';
+    const person=document.createElement('div');person.className='readable-schedule-person-name';
+    const dot=document.createElement('span');dot.className='readable-schedule-person-dot';dot.style.backgroundColor=employeeColor(name);
+    const label=document.createElement('strong');label.textContent=name;person.append(dot,label);
+    const chip=document.createElement('span');chip.className='readable-schedule-time absent';chip.textContent='Absent · congé validé';
+    row.append(person,chip);body.appendChild(row);
+   }
+  }
+  const note=document.createElement('p');note.className='readable-schedule-footer';note.textContent='Horaires habituels et samedis planifiés. Les modifications et remplacements exceptionnels se gèrent dans leurs rubriques dédiées.';body.appendChild(note);
+  dialog.append(header,body);document.body.appendChild(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.onclick=e=>{if(e.target===dialog)dialog.close()};dialog.showModal();
+ };
+ cell.title='Voir le planning détaillé du '+date;cell.setAttribute('role','button');cell.setAttribute('tabindex','0');cell.setAttribute('aria-label','Ouvrir le planning détaillé du '+fmt(date));
+ cell.onclick=open;cell.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
+}
+
 function renderCalendar() {
   const grid = document.getElementById('calendarGrid');
   const title = document.getElementById('calendarTitle');
@@ -2299,26 +2406,7 @@ if(tab!=='recovery'&&!sunday)(window.calendarLeaves || []).forEach(leave => {
   else cell.appendChild(event);
 });
 
-if(tab==='schedules'){
- const slots=scheduleBars(date);
- if(slots.length){
-  const wrap=document.createElement('div');wrap.className='schedule-timeline';wrap.setAttribute('aria-label','Jauges verticales des horaires du '+date);
-  const groups=new Map();
-  for(const slot of slots){if(!groups.has(slot.name))groups.set(slot.name,[]);groups.get(slot.name).push(slot)}
-  for(const [name,periods] of [...groups.entries()].sort((a,b)=>{const minutes=ps=>ps.reduce((sum,p)=>sum+Math.max(0,timeMin(p.end)-timeMin(p.start)),0);return minutes(b[1])-minutes(a[1])||a[0].localeCompare(b[0],'fr')})){
-   const lane=document.createElement('div');lane.className='schedule-lane';lane.title=name+' : '+periods.map(p=>p.start+'–'+p.end).join(' / ');
-   const label=document.createElement('span');label.className='schedule-lane-label';label.textContent=name.split(' ')[0];lane.appendChild(label);
-   const axis=document.createElement('div');axis.className='schedule-axis';for(const minute of [...new Set(periods.flatMap(p=>[timeMin(p.start),timeMin(p.end)]))].sort((a,b)=>a-b)){if(minute<540||minute>1170)continue;const tick=document.createElement('span');tick.className='schedule-axis-tick';tick.style.bottom=((minute-540)/630*100)+'%';tick.textContent=staffingClock(minute);axis.appendChild(tick)}lane.appendChild(axis);const track=document.createElement('div');track.className='schedule-track';
-   for(const p of periods){
-    const from=Math.max(540,Math.min(1170,timeMin(p.start))),to=Math.max(540,Math.min(1170,timeMin(p.end)));
-    if(to<=from)continue;
-    const segment=document.createElement('span');segment.className='schedule-segment';segment.style.bottom=((from-540)/630*100)+'%';segment.style.height=((to-from)/630*100)+'%';segment.style.background=employeeColor(name);segment.title=name+' · '+p.start+'–'+p.end;track.appendChild(segment);
-   }
-   lane.appendChild(track);wrap.appendChild(lane);
-  }
-  cell.appendChild(wrap);
- }else{const empty=document.createElement('div');empty.className='schedule-empty';empty.textContent='Aucun horaire renseigné';cell.appendChild(empty)}
-}
+if(tab==='schedules')formatReadableScheduleDay(cell,date,holiday);
 if(new Date(year,month,day).getDay()===6){const anchor=new Date(2026,10,7,12),current=new Date(year,month,day,12);const weeks=Math.round((current-anchor)/604800000);const afternoon=weeks%2===0;const hours=document.createElement('div');hours.className='calendar-saturday-hours';hours.textContent=afternoon?'Ouvert 9 h–12 h 30 · 14 h–19 h':'Ouvert 9 h–12 h 30';cell.appendChild(hours);const assignments=(typeof sats!=='undefined'?sats:[]).filter(x=>x.saturday_date===date);for(const assignment of assignments){const person=nm(assignment.user_id);const sat=document.createElement('div');sat.className='calendar-event';sat.style.background=employeeColor(person);sat.style.color='white';sat.textContent=(afternoon?'Après-midi · ':'Samedi · ')+person;cell.appendChild(sat);if(tab==='saturdays'&&assignment.user_id===user?.id){sat.style.cursor='pointer';sat.title='Cliquer pour demander un remplaçant';sat.onclick=e=>{e.stopPropagation();saturdaySlotMenu(cell,date)}}}
 for(const cover of (typeof satCovers!=='undefined'?satCovers:[]).filter(x=>x.saturday_date===date&&['open','pending_manager','approved'].includes(x.status))){
  const event=document.createElement('div');event.className='calendar-event';
