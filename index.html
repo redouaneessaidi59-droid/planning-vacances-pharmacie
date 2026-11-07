@@ -557,6 +557,15 @@ tr:nth-child(even) td{background:#fafcfb}
 .readable-schedule-footer{font-size:13px;line-height:1.5;color:#66796b;margin:20px 0 2px}
 .readable-schedule-holiday{padding:18px;background:#e5e7eb;border-radius:10px;font-size:17px;font-weight:750;color:#374151}
 @media(max-width:650px){#calendarSection .readable-schedule-day{min-height:164px!important;padding:11px!important}#calendarSection .readable-schedule-chip{font-size:13px;padding:7px 8px}.readable-schedule-dialog-header{padding:16px;flex-wrap:wrap}.readable-schedule-dialog-body{padding:16px}.readable-schedule-person{align-items:flex-start;flex-direction:column}}
+
+/* Présenter distinctement les horaires habituels et les remplacements confirmés */
+#calendarSection .readable-schedule-chip.replacement{background:#dff4e7;color:#185b3a;border:1px solid #b5ddc5}
+.readable-schedule-person .readable-schedule-periods{flex:1;min-width:230px;justify-content:flex-end;align-items:center}
+.readable-schedule-hours-heading{flex-basis:100%;font-size:12px;letter-spacing:.025em;text-transform:uppercase;color:#63776b;font-weight:800;text-align:right;margin:5px 0 0}
+.readable-schedule-hours-heading.replacement{color:#206c44;margin-top:10px}
+.readable-schedule-time.replacement{background:#dbf4e3;color:#125b38;border:1px solid #a6dcb8;font-size:14px;line-height:1.5;white-space:normal}
+.readable-schedule-time.unscheduled{background:#f1f2f3;color:#64736b}
+@media(max-width:650px){.readable-schedule-person .readable-schedule-periods{min-width:0;justify-content:flex-start;width:100%}.readable-schedule-hours-heading{text-align:left}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -876,7 +885,7 @@ function openAssignmentRefusalDialog(assignment){
  buttons.append(cancel,submit);panel.appendChild(buttons);overlay.appendChild(panel);document.body.appendChild(overlay);comment.focus();
 }
 
-async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences(),loadManualAbsences(),loadManagerAssignments()]);renderCalendar();await renderLeastReplacementRanking();await showRecoveryHours();if(profile.role==='owner'||profile.role==='admin'){await renderAdmin();await renderManualReplacementApprovals()}}
+async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences(),loadManualAbsences(),loadManagerAssignments(),loadTeamConfirmedReplacementShifts()]);renderCalendar();await renderLeastReplacementRanking();await showRecoveryHours();if(profile.role==='owner'||profile.role==='admin'){await renderAdmin();await renderManualReplacementApprovals()}}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(!isManagementUser()&&!staffVisibleTabs.has(b.dataset.tab))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','leaveGuide','admin','paidHours'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;try{sessionStorage.setItem('pv_active_tab',tab)}catch{}renderCalendar();renderLeastReplacementRanking();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages();if(tab==='paidHours')renderPaidHours()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
@@ -1445,6 +1454,20 @@ async function loadScheduleCalendar(){
  if(p.error||v.error||slots.error)return;
  schedulePeople=p.data||[];scheduleVersions=v.data||[];scheduleSlots=slots.data||[];renderCalendar();
 }
+
+async function loadTeamConfirmedReplacementShifts(){
+ const y=calendarDate.getFullYear(),m=calendarDate.getMonth();
+ const first=localISO(new Date(y,m,1,12));
+ const last=localISO(new Date(y,m+1,0,12));
+ const {data,error}=await sb.rpc('team_confirmed_replacement_shifts',{p_from:first,p_to:last});
+ if(error){
+  console.warn('Remplacements confirmés de l’équipe :',error.message);
+  window.confirmedTeamShifts=[];
+  return;
+ }
+ window.confirmedTeamShifts=data||[];
+}
+
 async function renderSchedules(){
  if(!user)return;
  const [p,v,s]=await Promise.all([
@@ -1453,7 +1476,7 @@ async function renderSchedules(){
  sb.from('work_schedule_slots').select('version_id,weekday,start_time,end_time')
  ]);
  if(p.error||v.error||s.error){if(tab==='schedules')$('calendarGrid').innerHTML='<p class="schedule-alert" role="alert">Impossible de charger les horaires : '+esc((p.error||v.error||s.error).message)+'</p>';return}
- schedulePeople=p.data||[];scheduleVersions=v.data||[];scheduleSlots=s.data||[];if(typeof renderCalendar==='function')renderCalendar();
+ schedulePeople=p.data||[];scheduleVersions=v.data||[];scheduleSlots=s.data||[];await loadTeamConfirmedReplacementShifts();if(typeof renderCalendar==='function')renderCalendar();
  const today=new Date().toLocaleDateString('en-CA');
  $('scheduleList').innerHTML=schedulePeople.map(person=>{
   const version=scheduleCurrent(person.id,today);
@@ -2240,11 +2263,19 @@ function formatReadableScheduleDay(cell,date,holiday){
  const manual=(window.manualAbsences||[]).filter(x=>x.absence_date===date);
  const approvedLeaves=(window.calendarLeaves||[]).filter(x=>x.status==='approved'&&date>=x.start_date&&date<=x.end_date);
  const recoveries=(window.approvedAbsences||[]).filter(x=>x.date===date);
+ const confirmedShifts=holiday?[]:(window.confirmedTeamShifts||[]).filter(x=>x.work_date===date);
+ const replacementByName=new Map();
+ for(const item of confirmedShifts){
+  const name=item.replacement_name;
+  if(!replacementByName.has(name))replacementByName.set(name,[]);
+  replacementByName.get(name).push(item);
+ }
  const absentNames=new Set([...manual.map(x=>nm(x.employee_id)),...approvedLeaves.map(x=>x.profiles?.full_name||nm(x.user_id))]);
  const attendance=[...groups.keys()].filter(name=>!absentNames.has(name)&&!recoveries.some(r=>nm(r.user_id)===name&&!r.start&&!r.end));
  if(!holiday){
   addChip(attendance.length+' salarié'+(attendance.length!==1?'s':'')+' prévu'+(attendance.length!==1?'s':''),'headcount');
   if(absentNames.size)addChip(absentNames.size+' absence'+(absentNames.size!==1?'s':''),'absence');
+  if(confirmedShifts.length)addChip(confirmedShifts.length+' remplacement'+(confirmedShifts.length!==1?'s':'')+' validé'+(confirmedShifts.length!==1?'s':''),'replacement');
  }
  const hint=document.createElement('div');hint.className='readable-schedule-hint';hint.textContent='Voir les horaires';cell.appendChild(hint);
  const open=()=>{
@@ -2261,7 +2292,8 @@ function formatReadableScheduleDay(cell,date,holiday){
   const body=document.createElement('div');body.className='readable-schedule-dialog-body';
   if(holiday){const h=document.createElement('p');h.className='readable-schedule-holiday';h.textContent='Jour férié : '+holiday+' — pharmacie fermée';body.appendChild(h)}
   else{
-   const ordered=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0],'fr'));
+   const allNames=new Set([...groups.keys(),...replacementByName.keys()]);
+   const ordered=[...allNames].sort((a,b)=>a.localeCompare(b,'fr')).map(name=>[name,groups.get(name)||[]]);
    if(!ordered.length){const empty=document.createElement('p');empty.textContent='Aucun horaire renseigné pour cette journée.';body.appendChild(empty)}
    for(const [name,periods] of ordered){
     const row=document.createElement('div');row.className='readable-schedule-person';
@@ -2269,11 +2301,22 @@ function formatReadableScheduleDay(cell,date,holiday){
     const dot=document.createElement('span');dot.className='readable-schedule-person-dot';dot.style.backgroundColor=employeeColor(name);
     const label=document.createElement('strong');label.textContent=name;person.append(dot,label);
     const times=document.createElement('div');times.className='readable-schedule-periods';
+    const baseHeading=document.createElement('div');baseHeading.className='readable-schedule-hours-heading';baseHeading.textContent='Horaires habituels';times.appendChild(baseHeading);
     const absent=absentNames.has(name);
     const recovery=recoveries.find(r=>nm(r.user_id)===name);
     if(absent){const c=document.createElement('span');c.className='readable-schedule-time absent';c.textContent='Absent · congé validé';times.appendChild(c)}
     else if(recovery&&!recovery.start&&!recovery.end){const c=document.createElement('span');c.className='readable-schedule-time absent';c.textContent='Récupération';times.appendChild(c)}
-    else for(const item of periods){const c=document.createElement('span');c.className='readable-schedule-time';c.textContent=item.start+' – '+item.end;times.appendChild(c)}
+    else if(!periods.length){const c=document.createElement('span');c.className='readable-schedule-time unscheduled';c.textContent='Aucun horaire habituel';times.appendChild(c)}
+    else for(const item of [...periods].sort((a,b)=>a.start.localeCompare(b.start))){const c=document.createElement('span');c.className='readable-schedule-time';c.textContent=item.start+' – '+item.end;times.appendChild(c)}
+    const assigned=replacementByName.get(name)||[];
+    if(assigned.length){
+     const heading=document.createElement('div');heading.className='readable-schedule-hours-heading replacement';heading.textContent='Remplacement validé';times.appendChild(heading);
+     for(const shift of assigned){
+      const c=document.createElement('span');c.className='readable-schedule-time replacement';
+      c.textContent='✓ Remplace '+shift.absent_name+' · '+shortTime(shift.start_time)+'–'+shortTime(shift.end_time);
+      times.appendChild(c);
+     }
+    }
     row.append(person,times);body.appendChild(row);
    }
    for(const name of absentNames){
@@ -2286,7 +2329,7 @@ function formatReadableScheduleDay(cell,date,holiday){
     row.append(person,chip);body.appendChild(row);
    }
   }
-  const note=document.createElement('p');note.className='readable-schedule-footer';note.textContent='Horaires habituels et samedis planifiés. Les modifications et remplacements exceptionnels se gèrent dans leurs rubriques dédiées.';body.appendChild(note);
+  const note=document.createElement('p');note.className='readable-schedule-footer';note.textContent='Les horaires habituels et les remplacements confirmés sont affichés séparément. Les demandes en attente et les modes de compensation privés ne sont pas visibles ici.';body.appendChild(note);
   dialog.append(header,body);document.body.appendChild(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.onclick=e=>{if(e.target===dialog)dialog.close()};dialog.showModal();
  };
  cell.title='Voir le planning détaillé du '+date;cell.setAttribute('role','button');cell.setAttribute('tabindex','0');cell.setAttribute('aria-label','Ouvrir le planning détaillé du '+fmt(date));
@@ -2480,11 +2523,13 @@ grid.appendChild(cell);
 document.getElementById('calendarPrev').onclick = () => {
   calendarDate.setMonth(calendarDate.getMonth() - 1, 1);
   renderCalendar();
+  if(tab==='schedules')loadTeamConfirmedReplacementShifts().then(()=>renderCalendar());
 };
 
 document.getElementById('calendarNext').onclick = () => {
   calendarDate.setMonth(calendarDate.getMonth() + 1, 1);
   renderCalendar();
+  if(tab==='schedules')loadTeamConfirmedReplacementShifts().then(()=>renderCalendar());
 };
 
 renderCalendar();
