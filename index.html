@@ -974,7 +974,6 @@ async function showRecoveryHours(){
  const info=document.createElement('small');info.className='muted';info.textContent='Solde net après les récupérations validées et les transferts vers les heures rémunérées.';el.appendChild(info);
 }
 let paidHoursMonth=new Date().toISOString().slice(0,7);
-async 
 async function renderSaturdayAfternoonHours(){
  if(!isManagementUser())return;
  const container=$('saturdayAfternoonHours');if(!container)return;
@@ -1051,7 +1050,7 @@ async function renderSaturdayAfternoonHours(){
  }
 }
 
-function renderPaidHours(){
+async function renderPaidHours(){
  if(!['owner','admin'].includes(profile?.role))return;
  renderSaturdayAfternoonHours();
  const box=$('paidHoursContent');box.textContent='Chargement…';
