@@ -587,6 +587,21 @@ tr:nth-child(even) td{background:#fafcfb}
 .sat-hours-actions select{width:170px;min-height:44px;font-size:15px}
 .sat-hours-actions button{min-height:44px;font-size:14px}
 @media(max-width:650px){.saturday-hours-manager{padding:14px}.sat-hours-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.sat-hours-kpi strong{font-size:20px}.sat-hours-actions select,.sat-hours-actions button{width:100%}}
+
+.overtime-ledger-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+.overtime-ledger-kpi{display:flex;flex-direction:column;gap:7px;padding:16px;border:1px solid #d4e5da;border-radius:12px;background:#f4f9f6}
+.overtime-ledger-kpi strong{font-size:25px;color:#184a32}.overtime-ledger-kpi span{font-size:13px;color:#4c6a57;font-weight:700}
+.overtime-ledger-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:19px 0}
+.overtime-ledger-controls select{min-height:44px;max-width:240px}
+.overtime-ledger-person{border:1px solid #d3e4d8;border-radius:12px;margin:12px 0;overflow:hidden;background:#fff}
+.overtime-ledger-person-header{display:flex;justify-content:space-between;gap:12px;padding:16px;background:#edf6ef;cursor:pointer}
+.overtime-ledger-person-header strong:last-child{color:#1b7245}
+.overtime-ledger-line{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:13px 17px;border-top:1px solid #e4ece6}
+.overtime-ledger-line>div{display:flex;flex-direction:column;gap:4px}
+.overtime-ledger-line span{font-size:13px;color:#657a6b}.overtime-ledger-line>strong{white-space:nowrap}
+.overtime-ledger-history{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin:13px 0 20px}
+.overtime-ledger-history-row{display:flex;align-items:center;justify-content:space-between;padding:13px!important;background:#fff!important;color:#19452d!important;border:1px solid #d6e7dd!important;border-radius:9px;font-size:14px!important}
+@media(max-width:650px){.overtime-ledger-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overtime-ledger-kpi strong{font-size:20px}}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -626,7 +641,7 @@ tr:nth-child(even) td{background:#fafcfb}
 <nav class="nav-groups" aria-label="Navigation principale">
 <div class="nav-group"><div class="nav-title">📅 Congés et remplacements</div><div class="tabs"><button class="active" data-tab="overview">Planning</button><button data-tab="request">Poser des congés</button><button data-tab="replacement">Je souhaite remplacer <span id="replacementCount" class="nav-count">0</span></button></div></div>
 <div class="nav-group"><div class="nav-title">🗓️ Organisation des samedis</div><div class="tabs"><button data-tab="saturdays">Gestion des samedis</button></div></div>
-<div class="nav-group"><div class="nav-title">⚙️ Mon espace et gestion</div><div class="tabs"><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="messages">Messagerie</button><button data-tab="leaveGuide">Comprendre les congés</button><button data-tab="recovery" id="recoveryManagerTab" class="hidden">Calendrier récupérations</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button><button data-tab="paidHours" id="paidHoursTab" class="hidden">Heures sup à payer</button></div></div>
+<div class="nav-group"><div class="nav-title">⚙️ Mon espace et gestion</div><div class="tabs"><button data-tab="balances">Mes compteurs</button><button data-tab="schedules">Horaires habituels</button><button data-tab="messages">Messagerie</button><button data-tab="leaveGuide">Comprendre les congés</button><button data-tab="recovery" id="recoveryManagerTab" class="hidden">Calendrier récupérations</button><button data-tab="admin" id="adminTab" class="hidden">Gestion patron</button><button data-tab="paidHours" id="paidHoursTab" class="hidden">Gestion des heures à payer</button><button data-tab="overtimeLedger" id="overtimeLedgerTab" class="hidden">Compteur heures supp</button></div></div>
 </nav>
 <section id="calendarSection" class="card">
   <div class="row calendar-toolbar">
@@ -667,7 +682,7 @@ tr:nth-child(even) td{background:#fafcfb}
 <p class="hint">Les congés s'acquièrent à raison de 2,5 jours ouvrables par mois, soit 30 jours pour une année complète. Le calcul peut dépendre de la date réelle de reprise.</p>
 </section>
 <section id="balances" class="card hidden"><h2>📊 Mes compteurs</h2><p class="section-lead">Consultez vos jours de congés et vos récupérations disponibles.</p><div id="myBalances">Chargement…</div><div class="item"><h3>📣 Mes remplacements attribués par la direction</h3><p class="hint">Consulte les dates et horaires qui t’ont été attribués. Si une réponse est nécessaire, tu peux accepter ou refuser ici.</p><div id="myAssignmentNotificationsBalances"></div></div><div class="item"><strong>Heures de récupération disponibles</strong><p id="myRecoveryHours">Chargement…</p><small class="muted">Remplacements validés, samedis inclus, après transfert éventuel en heures à payer.</small></div></section>
-<section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p>
+<section id="overtimeLedger" class="card hidden"><h2>📊 Compteur heures supp</h2><p class="section-lead">Suivi mensuel des heures à payer. Accès réservé à Redouane et Ibrahim.</p><div id="overtimeLedgerContent" aria-live="polite">Chargement…</div></section><section id="paidHours" class="card hidden"><h2>💶 Heures supplémentaires à payer</h2><p class="hint">Remplacements confirmés, congés validés et rémunération choisie. Décompte en heures, sans calcul de montant.</p>
 <div id="saturdayAfternoonHours" class="saturday-hours-manager" aria-live="polite"><p>Chargement des samedis après-midi…</p></div>
 <div id="paidHoursContent">Chargement…</div></section><section id="admin" class="card hidden"><h2>⚙️ Gestion de la pharmacie</h2><h3>📥 Demandes de congés à traiter</h3><p class="admin-intro">Consultez chaque demande, puis choisissez une décision. Les demandes en attente apparaissent ici.</p><div id="adminRequests"></div><h3 style="margin-top:32px">📊 Soldes de congés des salariés</h3><p class="admin-intro">Modifiez les jours disponibles, puis enregistrez les compteurs de chaque salarié.</p><div id="allBalances"></div><h3 style="margin-top:24px">Remplacements des absences signalées par la direction</h3><div id="manualReplacementApprovals"></div><h3 style="margin-top:24px">Propositions confidentielles</h3><div id="privateDetails"></div></section>
 <section id="teamManagement" class="card">
@@ -781,7 +796,7 @@ async function checkLeaveNotificationLink(){
 
 
 const staffVisibleTabs=new Set(['overview','request','replacement','saturdays','balances','schedules','messages','leaveGuide']);
-const managementOnlyTabs=new Set(['availability','recovery','admin','paidHours']);
+const managementOnlyTabs=new Set(['availability','recovery','admin','paidHours','overtimeLedger']);
 function isManagementUser(){return profile?.role==='owner'||profile?.role==='admin'}
 function applyTabPermissions(){
   const manager=isManagementUser();
@@ -810,7 +825,7 @@ function applyTabPermissions(){
 async function loadUser(){const {data:{user:u}}=await sb.auth.getUser();user=u;if(!user)return;
 let {data:p,error}=await sb.from('profiles').select('*').eq('id',user.id).single();if(error){notice("Profil non initialisé. Exécute le script SQL puis reconnecte-toi.",true);return}profile=p;
 show('auth',false);show('app',true);$('who').textContent=p.full_name;$('role').textContent=p.role==='owner'?'Patron / salarié':p.role==='admin'?'Gestionnaire / salarié':'Salarié';
-show('adminTab',isManagementUser());show('paidHoursTab',isManagementUser());show('recoveryManagerTab',isManagementUser());applyTabPermissions();await refresh();const requestedTab=isManagementUser()||staffVisibleTabs.has(savedTab)?savedTab:'overview';const target=document.querySelector('[data-tab="'+requestedTab+'"]');if(target&&!target.classList.contains('hidden')&&!(target.closest('.hidden')))target.click();await checkLeaveNotificationLink()}
+show('adminTab',isManagementUser());show('paidHoursTab',isManagementUser());show('overtimeLedgerTab',isManagementUser());show('recoveryManagerTab',isManagementUser());applyTabPermissions();await refresh();const requestedTab=isManagementUser()||staffVisibleTabs.has(savedTab)?savedTab:'overview';const target=document.querySelector('[data-tab="'+requestedTab+'"]');if(target&&!target.classList.contains('hidden')&&!(target.closest('.hidden')))target.click();await checkLeaveNotificationLink()}
 async function loadApprovedAbsences(){const {data,error}=await sb.rpc('list_approved_recovery_absences');if(error){window.approvedAbsences=null;notice('Impossible de charger les récupérations validées : '+error.message,true);return}window.approvedAbsences=(data||[]).map(x=>({user_id:x.user_id,date:x.absence_date,start:x.start_time,end:x.end_time}))}
 async function loadManualAbsences(){const [a,b]=await Promise.all([sb.from('manual_absences').select('id,employee_id,absence_date'),sb.from('manual_absence_replacements').select('*')]);if(a.error||b.error){notice('Absences et remplacements : '+(a.error||b.error).message,true);return}window.manualAbsences=a.data||[];window.manualReplacementOffers=b.data||[]}
 async function openManualAbsencePicker(date){if(!['owner','admin'].includes(profile?.role))return;await getTeam();const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;background:#0008;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';const panel=document.createElement('div');panel.style.cssText='background:white;padding:22px;border-radius:12px;max-width:430px;width:100%;box-shadow:0 10px 35px #0003';const heading=document.createElement('h3');heading.textContent='Signaler une absence — '+fmt(date);const label=document.createElement('label');label.textContent='Salarié absent';const select=document.createElement('select');select.style.width='100%';for(const p of team){const opt=document.createElement('option');opt.value=p.id;opt.textContent=p.full_name;select.appendChild(opt)}const hint=document.createElement('p');hint.className='muted';hint.textContent='L’absence apparaît dans la couleur du salarié, sans déduire automatiquement ses congés payés.';const actions=document.createElement('div');actions.className='actions';const cancel=document.createElement('button');cancel.className='secondary';cancel.textContent='Annuler';cancel.onclick=()=>overlay.remove();const save=document.createElement('button');save.textContent='Signaler l’absence';save.onclick=async()=>{save.disabled=true;const {error}=await sb.from('manual_absences').insert({employee_id:select.value,absence_date:date,created_by:user.id});if(error){notice(error.code==='23505'?'Cette absence est déjà signalée.':error.message,true);save.disabled=false;return}overlay.remove();await loadManualAbsences();renderCalendar();notice('Absence ajoutée au planning.')};actions.append(cancel,save);const existing=(window.manualAbsences||[]).filter(a=>a.absence_date===date);if(existing.length){const section=document.createElement('div');section.style.marginTop='14px';const title=document.createElement('strong');title.textContent='Absences déjà signalées';section.appendChild(title);for(const absence of existing){const line=document.createElement('div');line.className='row';line.style.marginTop='8px';const name=document.createElement('span');name.textContent=nm(absence.employee_id);name.style.color=employeeColor(nm(absence.employee_id));const remove=document.createElement('button');remove.className='secondary';remove.textContent='Retirer l’absence';remove.onclick=async()=>{overlay.remove();await removeManualAbsence(absence)};line.append(name,remove);section.appendChild(line)}panel.appendChild(section)}panel.append(heading,label,select,hint,actions);overlay.appendChild(panel);overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};document.body.appendChild(overlay)}
@@ -909,7 +924,7 @@ function openAssignmentRefusalDialog(assignment){
 }
 
 async function refresh(){await Promise.all([renderRequests(),renderBalances(),loadSaturdayCalendar(),loadScheduleCalendar(),loadApprovedAbsences(),loadManualAbsences(),loadManagerAssignments(),loadTeamConfirmedReplacementShifts()]);renderCalendar();await renderLeastReplacementRanking();await showRecoveryHours();if(profile.role==='owner'||profile.role==='admin'){await renderAdmin();await renderManualReplacementApprovals()}}
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(!isManagementUser()&&!staffVisibleTabs.has(b.dataset.tab))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','leaveGuide','admin','paidHours'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;try{sessionStorage.setItem('pv_active_tab',tab)}catch{}renderCalendar();renderLeastReplacementRanking();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages();if(tab==='paidHours')renderPaidHours()});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{if(!isManagementUser()&&!staffVisibleTabs.has(b.dataset.tab))return;document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['overview','request','replacement','balances','schedules','availability','recovery','saturdays','messages','leaveGuide','admin','paidHours','overtimeLedger'].forEach(x=>show(x,x===b.dataset.tab));tab=b.dataset.tab;try{sessionStorage.setItem('pv_active_tab',tab)}catch{}renderCalendar();renderLeastReplacementRanking();show('calendarSection',['overview','request','replacement','availability','saturdays','schedules'].includes(tab));if(tab==='replacement')renderReplacementNeeds();if(tab==='schedules'){renderSchedules()}if(tab==='availability')renderAvailability();if(tab==='recovery'&&['owner','admin'].includes(profile?.role))renderRecovery();if(tab==='saturdays')renderSaturdays();if(tab==='messages')renderMessages();if(tab==='paidHours')renderPaidHours();if(tab==='overtimeLedger')renderOvertimeLedger()});
 document.querySelectorAll('[data-tab]').forEach(b => {
   b.addEventListener('click', () => {
     $('teamManagement').classList.toggle(
@@ -973,6 +988,63 @@ async function showRecoveryHours(){
  el.textContent=(days?days+' jour'+(days>1?'s':''):'')+(remaining?(days?' + ':'')+'0,5 jour':'')+((days||remaining)?' + ':'')+Math.floor(n/60)+' h '+String(n%60).padStart(2,'0')+' disponibles';
  const info=document.createElement('small');info.className='muted';info.textContent='Solde net après les récupérations validées et les transferts vers les heures rémunérées.';el.appendChild(info);
 }
+
+let overtimeLedgerMonth='';
+async function renderOvertimeLedger(){
+ if(!isManagementUser())return;
+ const root=$('overtimeLedgerContent');if(!root)return;
+ root.textContent='Chargement des heures à payer…';
+ const now=new Date(),current=localISO(now).slice(0,7);
+ const months=Array.from({length:12},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-i,1,12);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')});
+ if(!months.includes(overtimeLedgerMonth))overtimeLedgerMonth=current;
+ const {data,error}=await sb.rpc('manager_overtime_pay_ledger',{p_from:months[11]+'-01',p_to:localISO(new Date(now.getFullYear(),now.getMonth()+1,0,12))});
+ if(tab!=='overtimeLedger')return;
+ if(error){root.textContent='Impossible de charger les heures à payer : '+error.message;return}
+ const records=data||[],minutes=a=>a.reduce((sum,r)=>sum+Number(r.minutes||0),0);
+ const hm=n=>Math.floor(n/60)+' h '+String(n%60).padStart(2,'0');
+ const label=m=>new Date(m+'-01T12:00:00').toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+ const byMonth=m=>records.filter(r=>String(r.work_date).slice(0,7)===m);
+ const element=(tag,cls,text)=>{const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x};
+ root.replaceChildren();
+ const summary=element('div','overtime-ledger-kpis');
+ for(const [text,value] of [['Heures à payer ce mois',minutes(byMonth(current))],['Cumul des 12 derniers mois',minutes(records)],['Récupération transférée ce mois',minutes(byMonth(current).filter(r=>r.category==='Récupération basculée à payer'))]]){
+  const card=element('div','overtime-ledger-kpi');card.append(element('strong','',hm(value)),element('span','',text));summary.appendChild(card);
+ }
+ root.appendChild(summary);
+ const controls=element('div','overtime-ledger-controls'),monthLabel=element('label','','Choisir le mois');
+ const select=element('select');select.id='overtimeLedgerMonth';monthLabel.htmlFor=select.id;
+ for(const m of months){const option=element('option','',label(m));option.value=m;select.appendChild(option)}
+ select.value=overtimeLedgerMonth;select.onchange=()=>{overtimeLedgerMonth=select.value;renderOvertimeLedger()};
+ const refresh=element('button','secondary','Actualiser');refresh.type='button';refresh.onclick=()=>renderOvertimeLedger();
+ controls.append(monthLabel,select,refresh);root.appendChild(controls);
+ root.appendChild(element('h3','','À payer · '+label(overtimeLedgerMonth)));
+ const selected=byMonth(overtimeLedgerMonth),staff=new Map();
+ for(const r of selected){const id=r.employee_id||r.employee_name;if(!staff.has(id))staff.set(id,{name:r.employee_name,items:[]});staff.get(id).items.push(r)}
+ if(!staff.size)root.appendChild(element('p','hint','Aucune heure à payer enregistrée pour ce mois.'));
+ for(const person of [...staff.values()].sort((a,b)=>a.name.localeCompare(b.name,'fr'))){
+  const card=element('details','overtime-ledger-person');card.open=true;
+  const top=element('summary','overtime-ledger-person-header');
+  top.append(element('strong','',person.name),element('strong','',hm(minutes(person.items))));card.appendChild(top);
+  for(const r of person.items.sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date)))){
+   const row=element('div','overtime-ledger-line');
+   const description=element('div');
+   description.append(element('strong','',fmt(r.work_date)),element('span','',r.category+(r.rate_label==='+25 %'?' · +25 %':'')));
+   row.append(description,element('strong','',hm(Number(r.minutes)||0)));card.appendChild(row);
+  }
+  root.appendChild(card);
+ }
+ root.appendChild(element('h3','','Récapitulatif des mois précédents'));
+ const history=element('div','overtime-ledger-history');
+ for(const m of months.slice(1)){
+  const row=element('button','overtime-ledger-history-row');row.type='button';
+  row.append(element('span','',label(m)),element('strong','',hm(minutes(byMonth(m)))));
+  row.onclick=()=>{overtimeLedgerMonth=m;renderOvertimeLedger()};
+  history.appendChild(row);
+ }
+ root.appendChild(history);
+ root.appendChild(element('p','hint','Alimentation automatique dès qu’un remplacement est accepté directement en paiement ou que des heures sont transférées depuis la récupération. Les samedis de Redouane à +25 % apparaissent après confirmation des heures effectuées. Les heures à payer ne signifient pas qu’elles ont déjà été versées sur la fiche de paie. Le compteur personnel des salariés reste inchangé.'));
+}
+
 let paidHoursMonth=new Date().toISOString().slice(0,7);
 async function renderSaturdayAfternoonHours(){
  if(!isManagementUser())return;
