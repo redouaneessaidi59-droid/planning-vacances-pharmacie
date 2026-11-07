@@ -602,6 +602,11 @@ tr:nth-child(even) td{background:#fafcfb}
 .overtime-ledger-history{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px;margin:13px 0 20px}
 .overtime-ledger-history-row{display:flex;align-items:center;justify-content:space-between;padding:13px!important;background:#fff!important;color:#19452d!important;border:1px solid #d6e7dd!important;border-radius:9px;font-size:14px!important}
 @media(max-width:650px){.overtime-ledger-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.overtime-ledger-kpi strong{font-size:20px}}
+
+/* Historique d'ouverture des détails, visible exclusivement sur le compte propriétaire. */
+.ibrahim-view-audit{font-size:13px;line-height:1.5;padding:9px 11px;border-radius:9px;background:#e9f2ec;color:#225c3c;border:1px solid #cfe4d6;font-weight:700;margin:9px 0}
+.ibrahim-view-audit.not-recorded{background:#f0f2f4;color:#586471;border-color:#e2e5e9}
+.ibrahim-view-audit.recorded{background:#e2f4e8;color:#19643a}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -757,6 +762,7 @@ async function checkLeaveNotificationLink(){
  if(activeError){console.warn('Lecture de la demande',activeError);return;}
  let heading='',description='',newRequest=null;
  if(active){
+  registerIbrahimLeaveDetailOpen(id);
   heading='Demande de congés : '+(active.status==='pending'?'en attente':active.status==='approved'?'acceptée':active.status==='rejected'?'refusée':'statut '+active.status);
   description='Période : '+fmt(active.start_date)+' au '+fmt(active.end_date)+'.';
  } else {
@@ -936,7 +942,7 @@ document.querySelectorAll('[data-tab]').forEach(b => {
 });
 function isOpenReplacementLeave(l){return !!l&&l.status==='pending'&&l.replacement_required===true&&!(l.replacements||[]).some(r=>r.confirmed_at)}
 function canOfferLeave(l){return isOpenReplacementLeave(l)&&l.user_id!==user?.id&&!(l.replacements||[]).some(r=>r.replacement_user_id===user?.id)}
-async function renderRequests(){let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,confirmed_at,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
+async function renderRequests(){const ownerViewLog=await loadOwnerIbrahimViewLog();let {data,error}=await sb.from('leave_requests').select('*,profiles!leave_requests_user_id_fkey(full_name),replacements(replacement_user_id,confirmed_at,profiles!replacements_replacement_user_id_fkey(full_name))').order('created_at',{ascending:false});if(error){$('requestsList').textContent=error.message;return}
 const {data:openLeaves,error:openLeavesError}=await sb.rpc('list_open_replacement_leaves');
 if(openLeavesError)console.warn('Remplacements ouverts :',openLeavesError.message);
 const known=new Set((data||[]).map(l=>l.id));
@@ -966,6 +972,7 @@ $('requestsList').innerHTML=(data||[]).map(r=>{
       <span class="team-leave-status team-leave-status-${stateClass}">${esc(currentStatus)}</span>
     </div>
     <div class="team-leave-period"><span aria-hidden="true">📅</span><div><span class="team-leave-label">Dates des congés</span><strong>Du ${fmt(r.start_date)} au ${fmt(r.end_date)}</strong></div></div>
+    ${ownerIbrahimViewLabel(r.id,ownerViewLog)}
     <p class="team-leave-replacement">${replacementInfo}</p>
     <div class="team-leave-actions"></div>
   </article>`;
@@ -1161,9 +1168,31 @@ async function renderPaidHours(){
   const btn=document.createElement('button');btn.textContent=c.mode==='paid'?'Transformer en récupération':'Transformer en rémunération';btn.onclick=async()=>{btn.disabled=true;const {error}=await sb.rpc('manager_set_saturday_compensation',{p_cover_id:c.cover_id,p_mode:c.mode==='paid'?'recovery':'paid'});if(error)notice(error.message,true);else{notice('Compensation mise à jour.');await renderPaidHours();await showRecoveryHours()}};line.appendChild(btn);box.appendChild(line)
  }
 }
+
+async function registerIbrahimLeaveDetailOpen(requestId){
+ if(profile?.role!=='admin'||!user||!requestId)return;
+ const {error}=await sb.rpc('record_ibrahim_leave_view',{p_request_id:requestId});
+ if(error)console.warn('Suivi des consultations indisponible',error.message);
+}
+async function loadOwnerIbrahimViewLog(){
+ if(profile?.role!=='owner')return new Map();
+ const {data,error}=await sb.rpc('owner_ibrahim_leave_views');
+ if(error){console.warn('État des consultations non disponible',error.message);return null}
+ return new Map((data||[]).map(row=>[row.request_id,row]));
+}
+function ownerIbrahimViewLabel(id,views){
+ if(profile?.role!=='owner')return '';
+ if(!views)return '<div class="ibrahim-view-audit">Suivi des ouvertures indisponible</div>';
+ const seen=views.get(id);
+ if(!seen)return '<div class="ibrahim-view-audit not-recorded">👁 Ibrahim : aucune ouverture enregistrée depuis l’activation du suivi</div>';
+ const when=new Date(seen.last_viewed_at).toLocaleString('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+ return '<div class="ibrahim-view-audit recorded">👁 Ibrahim a ouvert le détail le '+esc(when)+(seen.open_count>1?' · '+Number(seen.open_count)+' ouvertures':'')+'</div>';
+}
+
 function showLeaveRequestMessage(requestId){
  const request=(window.pendingAdminLeaveRequests||[]).find(r=>r.id===requestId);
  if(!request)return;
+ registerIbrahimLeaveDetailOpen(requestId);
  const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0;z-index:12000;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:18px';
  const panel=document.createElement('div');panel.style.cssText='background:#fff;color:#18312b;border-radius:16px;padding:24px;width:min(650px,100%);max-height:85vh;overflow:auto;box-shadow:0 16px 50px #0005';
  const title=document.createElement('h2');title.textContent='Message de '+(request.profiles?.full_name||'salarié');
@@ -1212,6 +1241,7 @@ async function renderAdmin() {
 
  
 if (profile.role === 'owner' || profile.role === 'admin') {
+  const ownerViewLog=await loadOwnerIbrahimViewLog();
   const { data: rs, error } = await sb
     .from('leave_requests')
     .select('*,profiles!leave_requests_user_id_fkey(full_name)')
@@ -1271,6 +1301,7 @@ if (profile.role === 'owner' || profile.role === 'admin') {
             <div class="admin-request-dates">📅 Du ${fmt(r.start_date)} au ${fmt(r.end_date)}</div></div>
             <span class="admin-status">⏳ En attente de décision</span>
           </div>
+          ${ownerIbrahimViewLabel(r.id,ownerViewLog)}
           ${r.note?.trim()?'<div class="admin-comment-preview"><strong>💬 Commentaire du salarié</strong><p>'+esc(r.note.trim())+'</p></div>':'<p class="admin-help">Aucun commentaire ajouté à cette demande.</p>'}
           <div class="actions"><button type="button" class="secondary" onclick="showLeaveRequestMessage('${r.id}')">💬 Afficher la demande en grand</button></div>
           <p class="admin-deadline">📌 Date limite indicative de réponse : <strong>${fmt(new Date(new Date(r.created_at).getTime()+7*86400000).toISOString().slice(0,10))}</strong></p>
@@ -1356,6 +1387,7 @@ window.openLeaveAssignmentDialog=async leaveId=>{
  if(!isManagementUser())return;
  const request=(window.pendingAdminLeaveRequests||[]).find(x=>x.id===leaveId);
  if(!request||request.status!=='pending'){notice('Demande de congés introuvable ou déjà traitée.',true);return}
+ registerIbrahimLeaveDetailOpen(leaveId);
  await getTeam();
  const dialog=document.createElement('dialog');dialog.className='leave-assignment-dialog';
  const outer=document.createElement('div');outer.className='leave-assign-container';
