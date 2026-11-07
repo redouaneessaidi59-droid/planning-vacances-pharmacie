@@ -519,6 +519,13 @@ tr:nth-child(even) td{background:#fafcfb}
 .team-schedule-dot{display:inline-block;width:13px;height:13px;border-radius:50%;flex-shrink:0}
 .team-schedule-person .schedule-days{display:grid;gap:5px;font-size:14px;line-height:1.5}
 @media(max-width:650px){.team-schedule-list{grid-template-columns:minmax(0,1fr)}}
+
+/* Classement directement visible, sans volet replié, pour chaque membre de l'équipe */
+#calendarSection .calendar-ranking-details{display:block;visibility:visible;border:1px solid #d4e5da;background:#f6faf7;padding:13px;margin-top:18px;border-radius:13px}
+#calendarSection .calendar-ranking-details[hidden]{display:none!important}
+#calendarSection .ranking-visible-title{font-size:18px;font-weight:800;color:#1c5539;margin:4px 9px 13px}
+#calendarSection .calendar-ranking-details .replacement-ranking{margin:0!important;display:block!important;visibility:visible!important}
+#calendarSection .replacement-rank-row{min-height:37px}
 </style>
 <!-- Version compteur récupération : 2026-11-05 -->
 </head>
@@ -573,7 +580,7 @@ tr:nth-child(even) td{background:#fafcfb}
  <span><i class="staffing-dot yellow"></i> Jaune : effectif réduit</span>
  <span><i class="staffing-dot red"></i> Rouge : aucun salarié disponible</span>
 </div>
-<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div class="calendar-grid-scroll"><div id="calendarGrid"></div></div><details class="calendar-ranking-details"><summary>🏅 Voir le classement des remplaçants et les statistiques</summary><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden" hidden aria-hidden="true"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></details></div>
+<div id="myAssignmentNotifications" class="assignment-notifications"></div><div class="calendar-with-ranking"><div class="calendar-grid-scroll"><div id="calendarGrid"></div></div><div class="calendar-ranking-details"><h3 class="ranking-visible-title">🏅 Classement des meilleurs remplaçants</h3><aside id="leastReplacementRanking" class="replacement-ranking" aria-label="Classement de tous les salariés par nombre de remplacements"><h3>🏅 Classement des remplaçants</h3><p class="muted">Classement décroissant des remplacements validés, actualisé automatiquement</p><div id="leastReplacementList">Chargement…</div><div id="managerRefusalRanking" class="hidden" hidden aria-hidden="true"><h3 style="margin-top:20px">Refus d’affectation par la direction</h3><p class="muted">Visible uniquement par Redouane et Ibrahim. Information indicative, sans effet automatique sur les congés.</p><div id="managerRefusalList"></div><h4 style="margin-top:16px">Derniers refus et commentaires</h4><div id="managerRefusalReasons"></div></div></aside></div></div>
 </section>
 <section id="overview" class="card team-requests-section"><p class="hint team-manager-hint">Responsables : cliquez sur une date du planning pour signaler une absence et choisir le salarié.</p><h2>📋 Demandes de congés de l'équipe</h2><p class="team-requests-intro">Retrouvez ici les congés demandés par vos collègues et leur état d'avancement. Les détails privés restent réservés aux responsables.</p><div id="requestsList" aria-live="polite">Chargement…</div></section>
 <section id="request" class="card hidden"><h2>📝 Demander des congés</h2><p class="section-lead">Choisissez les dates souhaitées, ajoutez un commentaire si nécessaire, puis envoyez la demande à vos responsables.</p>
@@ -751,22 +758,13 @@ setInterval(refreshRankingSafely,30000);
 async function renderLeastReplacementRanking(){
  const panel=$('leastReplacementRanking'),list=$('leastReplacementList');
  if(!panel||!list)return;
- panel.style.display=['overview','replacement','schedules'].includes(tab)?'block':'none';
+ panel.style.display=['overview','replacement','schedules','saturdays'].includes(tab)?'block':'none';
  if(panel.style.display==='none')return;
- const [people,classic,manual,saturday]=await Promise.all([
-  sb.from('profiles').select('id,full_name'),
-  sb.from('replacements').select('replacement_user_id,confirmed_at').not('confirmed_at','is',null),
-  sb.from('manual_absence_replacements').select('replacement_user_id,status').eq('status','approved'),
-  sb.from('saturday_cover_requests').select('volunteer_id,status').eq('status','approved')
- ]);
- const failure=[people,classic,manual,saturday].find(x=>x.error);
- if(failure){list.textContent='Classement indisponible : '+failure.error.message;return}
- const counts=new Map((people.data||[]).map(p=>[p.id,0]));
- for(const x of classic.data||[])if(counts.has(x.replacement_user_id))counts.set(x.replacement_user_id,counts.get(x.replacement_user_id)+1);
- for(const x of manual.data||[])if(counts.has(x.replacement_user_id))counts.set(x.replacement_user_id,counts.get(x.replacement_user_id)+1);
- for(const x of saturday.data||[])if(counts.has(x.volunteer_id))counts.set(x.volunteer_id,counts.get(x.volunteer_id)+1);
- for(const a of (window.managerAssignments||[]))if(a.response_status==='accepted'&&counts.has(a.replacement_user_id))counts.set(a.replacement_user_id,counts.get(a.replacement_user_id)+1);
- const sorted=(people.data||[]).filter(p=>p.full_name).sort((a,b)=>counts.get(b.id)-counts.get(a.id)||a.full_name.localeCompare(b.full_name,'fr'));
+ const {data:ranking,error:rankingError}=await sb.rpc('team_replacement_ranking');
+ if(rankingError){list.textContent='Classement indisponible : '+rankingError.message;return}
+ const people={data:(ranking||[]).map(x=>({id:x.employee_id,full_name:x.full_name}))};
+ const counts=new Map((ranking||[]).map(x=>[x.employee_id,Number(x.replacement_count||0)]));
+ const sorted=[...(people.data||[])];
  list.replaceChildren();
  for(const [index,p] of sorted.entries()){
   const line=document.createElement('div');line.className='replacement-rank-row';
@@ -2196,7 +2194,7 @@ function renderCalendar() {
     year: 'numeric'
   });
 
-  const rankingDisclosure=document.querySelector('.calendar-ranking-details');if(rankingDisclosure){rankingDisclosure.hidden=!['overview','replacement','schedules'].includes(tab);if(tab!=='overview')rankingDisclosure.open=false;}
+  const rankingDisclosure=document.querySelector('.calendar-ranking-details');if(rankingDisclosure){rankingDisclosure.hidden=!['overview','replacement','schedules','saturdays'].includes(tab);}
   grid.innerHTML = '';const legend=$('staffingLegend');if(legend)legend.style.display=tab==='replacement'?'flex':'none';const reminder=document.getElementById('holidayReminder');if(reminder){const today=localISO(new Date());const upcoming=schoolHolidaysB.find(x=>x[1]>=today);reminder.textContent=upcoming?(today>=upcoming[0]?'🏖️ Vacances scolaires en cours : '+upcoming[2]:'📣 Pensez à préparer vos congés : prochaines vacances '+upcoming[2]+' à partir du '+new Date(upcoming[0]+'T12:00:00').toLocaleDateString('fr-FR')):'';}
 
   ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].forEach(day => {
