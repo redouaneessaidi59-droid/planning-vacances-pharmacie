@@ -980,7 +980,7 @@ $('requestsList').innerHTML=(data||[]).map(r=>{
       : r.replacement_required===true
         ? '👥 Remplaçant à trouver'
         : 'ℹ️ Remplacement non encore défini';
-  return `<article class="item team-leave-card team-leave-${stateClass}">
+  return `<article class="item team-leave-card team-leave-${stateClass}" data-leave-id="${esc(r.id)}">
     <div class="team-leave-top">
       <div><strong class="team-leave-name">${esc(r.profiles?.full_name||'Salarié')}</strong>${self?'<span class="team-leave-self">Votre demande</span>':''}${ownerIbrahimViewLabel(r.id,ownerViewLog)}</div>
       <span class="team-leave-status team-leave-status-${stateClass}">${esc(currentStatus)}</span>
@@ -2778,7 +2778,8 @@ renderRequests = async function () {
       notice('Demande annulée avec succès.');
     };
 
-    (cartes[index]?.querySelector('.team-leave-actions') || cartes[index])?.appendChild(bouton);
+    const carte=[...cartes].find(c=>c.dataset.leaveId===demande.id);
+    carte?.querySelector('.team-leave-actions')?.appendChild(bouton);
   });
 };
 </script></body></html>
